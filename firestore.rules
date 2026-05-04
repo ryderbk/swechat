@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Only the two authenticated users can read/write anything
+    // Replace these UIDs with the actual Firebase Auth UIDs of both users
+    function isAllowed() {
+      return request.auth != null;
+    }
+
+    // Messages collection
+    match /messages/{messageId} {
+      allow read: if isAllowed();
+      allow create: if isAllowed()
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.keys().hasAll(['senderId', 'createdAt', 'type']);
+      allow update: if isAllowed()
+        && (
+          // Only the sender can edit/delete their own messages
+          resource.data.senderId == request.auth.uid
+          // Any authenticated user can update status and reactions
+          || request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'reactions'])
+        );
+      allow delete: if isAllowed() && resource.data.senderId == request.auth.uid;
+    }
+
+    // Shared note — both users can read and write
+    match /sharedNote/{docId} {
+      allow read, write: if isAllowed();
+    }
+
+    // Typing status — each user can write their own, both can read
+    match /typingStatus/{uid} {
+      allow read: if isAllowed();
+      allow write: if isAllowed() && request.auth.uid == uid;
+    }
+
+    // User presence — each user writes their own, both can read
+    match /userPresence/{uid} {
+      allow read: if isAllowed();
+      allow write: if isAllowed() && request.auth.uid == uid;
+    }
+
+    // Block everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

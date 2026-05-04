@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SweeTalk — Private Chat"
+version = "1.0.0"
+id = "artifacts/sweetalk"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23153
+
+[services.development]
+run = "pnpm --filter @workspace/sweetalk run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sweetalk", "run", "build" ]
+publicDir = "artifacts/sweetalk/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23153"
+BASE_PATH = "/"

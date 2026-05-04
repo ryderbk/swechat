@@ -1,0 +1,67 @@
+import { createContext, useEffect, useState, ReactNode } from "react";
+import {
+  User,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { setUserPresence } from "@/lib/firestore";
+
+interface AuthContextValue {
+  user: User | null;
+  loading: boolean;
+  signIn: (email: string, password: string, rememberMe: boolean) => Promise<void>;
+  signOut: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextValue>({
+  user: null,
+  loading: true,
+  signIn: async () => {},
+  signOut: async () => {},
+});
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      setLoading(false);
+      if (u) {
+        await setUserPresence(u.uid, true, u.displayName ?? u.email?.split("@")[0] ?? "You");
+      }
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const handleUnload = () => {
+      setUserPresence(user.uid, false);
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [user]);
+
+  const signIn = async (email: string, password: string, rememberMe: boolean) => {
+    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signOut = async () => {
+    if (user) await setUserPresence(user.uid, false);
+    await firebaseSignOut(auth);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
