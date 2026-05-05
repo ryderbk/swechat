@@ -1,6 +1,6 @@
 import { Message, AIMemory, getAIMemory, updateAIMemory, sendMessage, setTypingStatus } from "./firestore";
 
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const MODEL = "llama-3.3-70b-versatile";
 
 export async function generatePandaReply(
