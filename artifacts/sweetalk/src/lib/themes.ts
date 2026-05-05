@@ -1,158 +1,154 @@
 export interface ThemeDefinition {
   name: string;
   label: string;
+  emoji: string;
+  isDark: boolean;
+  /** CSS HSL values (no hsl() wrapper) */
   primary: string;
   primaryForeground: string;
+  foreground: string;
   background: string;
   card: string;
   accent: string;
+  accentForeground: string;
   border: string;
   muted: string;
-  // Dark mode overrides
-  darkPrimary?: string;
-  darkBackground?: string;
-  darkCard?: string;
-  darkAccent?: string;
-  darkBorder?: string;
-  darkMuted?: string;
+  mutedForeground: string;
+  ring: string;
   previewColor: string;
 }
 
 export const THEMES: ThemeDefinition[] = [
   {
-    name: "default",
-    label: "Rose",
-    primary: "340 25% 72%",
-    primaryForeground: "340 40% 30%",
-    background: "340 10% 99.5%",
-    card: "0 0% 100%",
-    accent: "340 15% 96%",
-    border: "340 12% 94%",
-    muted: "340 6% 98.5%",
-    // Dark
-    darkPrimary: "340 35% 65%",
-    darkBackground: "340 15% 10%",
-    darkCard: "340 15% 13%",
-    darkAccent: "340 20% 18%",
-    darkBorder: "340 12% 18%",
-    darkMuted: "340 10% 15%",
-    previewColor: "#e5b6c5",
+    name: "blush",
+    label: "Blush Love",
+    emoji: "🌸",
+    isDark: false,
+    primary: "322 72% 68%",
+    primaryForeground: "345 70% 18%",
+    foreground: "345 68% 28%",
+    background: "354 80% 97%",
+    card: "354 70% 95%",
+    accent: "351 65% 90%",
+    accentForeground: "345 68% 30%",
+    border: "354 45% 89%",
+    muted: "354 50% 96%",
+    mutedForeground: "333 55% 48%",
+    ring: "322 72% 68%",
+    previewColor: "#f472b6",
   },
   {
-    name: "midnight",
-    label: "Midnight",
-    primary: "239 55% 62%",
-    primaryForeground: "0 0% 100%",
-    background: "239 20% 98%",
-    card: "0 0% 100%",
-    accent: "239 40% 94%",
-    border: "239 20% 92%",
-    muted: "239 10% 97%",
-    // Dark
-    darkPrimary: "239 55% 65%",
-    darkBackground: "222 35% 8%",
-    darkCard: "222 35% 11%",
-    darkAccent: "239 30% 18%",
-    darkBorder: "222 30% 16%",
-    darkMuted: "222 25% 13%",
-    previewColor: "#5b5fc7",
+    name: "rosenight",
+    label: "Rose Night",
+    emoji: "🥀",
+    isDark: true,
+    primary: "345 72% 38%",
+    primaryForeground: "0 80% 97%",
+    foreground: "0 80% 94%",
+    background: "224 62% 5%",
+    card: "215 30% 16%",
+    accent: "345 40% 20%",
+    accentForeground: "351 80% 82%",
+    border: "215 28% 23%",
+    muted: "215 28% 13%",
+    mutedForeground: "351 65% 75%",
+    ring: "351 75% 68%",
+    previewColor: "#9f1239",
   },
   {
-    name: "ocean",
-    label: "Ocean",
-    primary: "189 55% 42%",
-    primaryForeground: "0 0% 100%",
-    background: "189 20% 98%",
-    card: "0 0% 100%",
-    accent: "189 40% 94%",
-    border: "189 20% 92%",
-    muted: "189 10% 97%",
-    // Dark
-    darkPrimary: "189 60% 45%",
-    darkBackground: "210 40% 8%",
-    darkCard: "210 40% 11%",
-    darkAccent: "189 30% 18%",
-    darkBorder: "210 30% 16%",
-    darkMuted: "210 25% 13%",
-    previewColor: "#2a9aad",
-  },
-  {
-    name: "forest",
-    label: "Forest",
-    primary: "160 45% 40%",
-    primaryForeground: "0 0% 100%",
-    background: "160 15% 98%",
-    card: "0 0% 100%",
-    accent: "160 30% 94%",
-    border: "160 15% 92%",
-    muted: "160 10% 97%",
-    // Dark
-    darkPrimary: "160 50% 42%",
-    darkBackground: "150 25% 8%",
-    darkCard: "150 25% 11%",
-    darkAccent: "160 25% 16%",
-    darkBorder: "150 20% 16%",
-    darkMuted: "150 15% 13%",
-    previewColor: "#2d8f6f",
+    name: "lavender",
+    label: "Lavender Dream",
+    emoji: "💜",
+    isDark: false,
+    primary: "258 80% 72%",
+    primaryForeground: "263 60% 12%",
+    foreground: "263 60% 32%",
+    background: "252 80% 98%",
+    card: "252 70% 95%",
+    accent: "280 60% 92%",
+    accentForeground: "263 60% 32%",
+    border: "252 45% 88%",
+    muted: "252 55% 96%",
+    mutedForeground: "263 55% 52%",
+    ring: "258 80% 72%",
+    previewColor: "#a78bfa",
   },
   {
     name: "sunset",
-    label: "Sunset",
-    primary: "25 65% 55%",
-    primaryForeground: "0 0% 100%",
-    background: "25 20% 98%",
-    card: "0 0% 100%",
-    accent: "25 40% 94%",
-    border: "25 20% 92%",
-    muted: "25 10% 97%",
-    // Dark
-    darkPrimary: "25 65% 58%",
-    darkBackground: "25 30% 8%",
-    darkCard: "25 30% 11%",
-    darkAccent: "25 25% 16%",
-    darkBorder: "25 20% 16%",
-    darkMuted: "25 15% 13%",
-    previewColor: "#e68a3e",
+    label: "Sunset Romance",
+    emoji: "🌅",
+    isDark: false,
+    primary: "351 80% 68%",
+    primaryForeground: "15 65% 12%",
+    foreground: "15 65% 26%",
+    background: "38 80% 97%",
+    card: "33 75% 92%",
+    accent: "25 70% 91%",
+    accentForeground: "15 65% 26%",
+    border: "33 45% 87%",
+    muted: "38 60% 95%",
+    mutedForeground: "17 60% 40%",
+    ring: "25 80% 55%",
+    previewColor: "#fb7185",
   },
   {
-    name: "minimal",
-    label: "Minimal",
-    primary: "215 15% 45%",
+    name: "classic",
+    label: "Classic Love",
+    emoji: "❤️",
+    isDark: false,
+    primary: "0 65% 48%",
     primaryForeground: "0 0% 100%",
+    foreground: "216 25% 16%",
     background: "0 0% 100%",
-    card: "0 0% 99%",
-    accent: "215 10% 95%",
-    border: "215 10% 92%",
-    muted: "215 5% 97%",
-    // Dark
-    darkPrimary: "215 15% 65%",
-    darkBackground: "215 15% 10%",
-    darkCard: "215 15% 13%",
-    darkAccent: "215 10% 20%",
-    darkBorder: "215 10% 18%",
-    darkMuted: "215 10% 15%",
-    previewColor: "#5c6b7a",
+    card: "0 70% 96%",
+    accent: "0 55% 93%",
+    accentForeground: "216 25% 16%",
+    border: "0 35% 88%",
+    muted: "0 40% 97%",
+    mutedForeground: "0 45% 38%",
+    ring: "0 65% 55%",
+    previewColor: "#dc2626",
   },
+];
+
+const LIGHT_PROPS = [
+  "--background", "--foreground", "--card", "--popover",
+  "--card-foreground", "--popover-foreground",
+  "--accent", "--accent-foreground",
+  "--border", "--input", "--muted", "--muted-foreground",
+  "--sidebar", "--sidebar-foreground", "--sidebar-accent", "--sidebar-accent-foreground",
 ];
 
 export function applyTheme(themeName: string, darkMode: boolean) {
   const theme = THEMES.find((t) => t.name === themeName) ?? THEMES[0];
   const root = document.documentElement;
 
-  const setProp = (prop: string, light: string, dark?: string) => {
-    root.style.setProperty(prop, darkMode && dark ? dark : light);
-  };
+  root.style.setProperty("--primary", theme.primary);
+  root.style.setProperty("--primary-foreground", theme.primaryForeground);
+  root.style.setProperty("--ring", theme.ring);
 
-  setProp("--primary", theme.primary, theme.darkPrimary);
-  setProp("--primary-foreground", theme.primaryForeground);
-  setProp("--background", theme.background, theme.darkBackground);
-  setProp("--card", theme.card, theme.darkCard);
-  setProp("--accent", theme.accent, theme.darkAccent);
-  setProp("--border", theme.border, theme.darkBorder);
-  setProp("--muted", theme.muted, theme.darkMuted);
-  
-  // Computed dependencies
-  setProp("--popover", theme.card, theme.darkCard);
-  setProp("--sidebar", theme.background, theme.darkBackground);
-  setProp("--sidebar-accent", theme.accent, theme.darkAccent);
+  const applyLight = theme.isDark || !darkMode;
+
+  if (applyLight) {
+    root.style.setProperty("--background", theme.background);
+    root.style.setProperty("--foreground", theme.foreground);
+    root.style.setProperty("--card", theme.card);
+    root.style.setProperty("--popover", theme.card);
+    root.style.setProperty("--card-foreground", theme.foreground);
+    root.style.setProperty("--popover-foreground", theme.foreground);
+    root.style.setProperty("--accent", theme.accent);
+    root.style.setProperty("--accent-foreground", theme.accentForeground);
+    root.style.setProperty("--border", theme.border);
+    root.style.setProperty("--input", theme.border);
+    root.style.setProperty("--muted", theme.muted);
+    root.style.setProperty("--muted-foreground", theme.mutedForeground);
+    root.style.setProperty("--sidebar", theme.background);
+    root.style.setProperty("--sidebar-foreground", theme.foreground);
+    root.style.setProperty("--sidebar-accent", theme.accent);
+    root.style.setProperty("--sidebar-accent-foreground", theme.accentForeground);
+  } else {
+    for (const prop of LIGHT_PROPS) {
+      root.style.removeProperty(prop);
+    }
+  }
 }

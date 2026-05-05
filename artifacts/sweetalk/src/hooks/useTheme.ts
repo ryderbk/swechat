@@ -12,9 +12,9 @@ export function useTheme() {
 
   const [colorTheme, setColorTheme] = useState<string>(() => {
     try {
-      return localStorage.getItem("color_theme") ?? "default";
+      return localStorage.getItem("color_theme") ?? "blush";
     } catch {
-      return "default";
+      return "blush";
     }
   });
 
