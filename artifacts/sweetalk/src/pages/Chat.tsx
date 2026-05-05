@@ -150,13 +150,12 @@ function Sidebar({
       </div>
 
       <Button
-        data-testid="button-album"
         variant="outline"
         className="w-full rounded-xl gap-2"
-        onClick={() => setLocation("/album")}
+        onClick={() => setLocation("/media")}
       >
-        <AlbumIcon className="w-4 h-4" />
-        Our Photo Album
+        <Paperclip className="w-4 h-4" />
+        Shared Media
       </Button>
     </div>
   );

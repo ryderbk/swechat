@@ -9,7 +9,7 @@ import { usePinLock } from "@/hooks/usePinLock";
 import { PinLock } from "@/components/PinLock";
 import Login from "@/pages/Login";
 import Chat from "@/pages/Chat";
-import Album from "@/pages/Album";
+import Media from "@/pages/Media";
 import Starred from "@/pages/Starred";
 import SetupPin from "@/pages/SetupPin";
 import NotFound from "@/pages/not-found";
@@ -82,7 +82,7 @@ function Router() {
     <Switch>
       <Route path="/" component={() => <GuestRoute component={Login} />} />
       <Route path="/chat" component={() => <ProtectedRoute component={Chat} />} />
-      <Route path="/album" component={() => <ProtectedRoute component={Album} />} />
+      <Route path="/media" component={() => <ProtectedRoute component={Media} />} />
       <Route path="/starred" component={() => <ProtectedRoute component={Starred} />} />
       <Route path="/setup-pin" component={() => <ProtectedRoute component={SetupPin} />} />
       <Route component={NotFound} />
