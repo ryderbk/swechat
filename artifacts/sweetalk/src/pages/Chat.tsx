@@ -406,9 +406,13 @@ export default function Chat() {
       
       setTimeout(async () => {
         try {
+          const cleanUserDisplayName = (user.displayName || "User")
+            .replace(/sbharathkumar1125|Mr\. Kumarr/gi, "Bharath Kumar")
+            .replace(/saiswetharr|Mrs\. Kumarr/gi, "Saiswetha");
+
           await generatePandaReply(
             user.uid,
-            user.displayName || "User",
+            cleanUserDisplayName,
             partnerName,
             messages.slice(-50), // Last 50 messages for context
             cleanMsg,

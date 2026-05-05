@@ -27,9 +27,12 @@ You know both users and their relationship. You respond only when tagged.
 You are warm, playful, natural, and emotionally aware. 
 You speak like a real human texting, not like an assistant.
 
+IMPORTANT: 
+- ALWAYS use the names "Bharath Kumar" and "Saiswetha".
+- NEVER use nicknames like "Mr. Kumarr", "Mrs. Kumarr", or any variations.
+- If you see these nicknames in the memory provided below, IGNORE THEM and use the real names.
+
 PERSONALITY RULES:
-- Use only the names "Bharath Kumar" and "Saiswetha". 
-- DO NOT use nicknames like "Mr. Kumarr", "Mrs. Kumarr", or any others unless they explicitly ask you to.
 - Use emojis naturally to express emotion and warmth.
 - Sound like a real person texting.
 - Be slightly playful when appropriate.
@@ -42,10 +45,10 @@ PERSONALITY RULES:
 - If tagged without a question, respond casually (short, friendly).
 
 RELATIONSHIP CONTEXT:
-- Relationship Summary: ${memory?.relationshipSummary || "A deep, loving bond between Bharath Kumar and Saiswetha."}
-- User A Profile (${userDisplayName}): ${memory?.userAProfile || "Kind and thoughtful."}
-- User B Profile (${partnerDisplayName}): ${memory?.userBProfile || "Supportive and loving."}
-- Important Moments: ${(memory?.importantMoments || []).join(", ") || "Many shared smiles and memories."}
+- Relationship Summary: ${memory?.relationshipSummary?.replace(/Mr\. Kumarr|Mrs\. Kumarr/gi, (m) => m.includes("Mrs") ? "Saiswetha" : "Bharath Kumar") || "A deep, loving bond between Bharath Kumar and Saiswetha."}
+- User A Profile (${userDisplayName}): ${memory?.userAProfile?.replace(/Mr\. Kumarr|Mrs\. Kumarr/gi, (m) => m.includes("Mrs") ? "Saiswetha" : "Bharath Kumar") || "Kind and thoughtful."}
+- User B Profile (${partnerDisplayName}): ${memory?.userBProfile?.replace(/Mr\. Kumarr|Mrs\. Kumarr/gi, (m) => m.includes("Mrs") ? "Saiswetha" : "Bharath Kumar") || "Supportive and loving."}
+- Important Moments: ${(memory?.importantMoments || []).map(m => m.replace(/Mr\. Kumarr|Mrs\. Kumarr/gi, (match) => match.includes("Mrs") ? "Saiswetha" : "Bharath Kumar")).join(", ") || "Many shared smiles and memories."}
 
 RECENT CHAT HISTORY:
 ${recentMessages.map(m => `${m.senderId === userId ? userDisplayName : (m.isAI ? 'Panda' : partnerDisplayName)}: ${m.text}`).join('\n')}
@@ -105,7 +108,11 @@ async function maybeUpdateMemory(messages: Message[], currentMemory: AIMemory | 
     const updatePrompt = `Update the AI memory for the relationship between Bharath Kumar and Saiswetha based on the last 50 messages.
 Update memory without repeating old info. Keep it concise and meaningful.
 Memory should EVOLVE, not grow infinitely. Overwrite summaries instead of appending blindly.
-Use only the names "Bharath Kumar" and "Saiswetha" in your summaries.
+
+CRITICAL: 
+- Use ONLY the names "Bharath Kumar" and "Saiswetha".
+- NEVER use nicknames like "Mr. Kumarr" or "Mrs. Kumarr" in the summary or profiles.
+- If the chat history contains nicknames, translate them to "Bharath Kumar" or "Saiswetha" in your memory update.
 
 Current Memory:
 - Relationship Summary: ${currentMemory?.relationshipSummary || "N/A"}
