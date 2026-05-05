@@ -41,7 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u);
       setLoading(false);
       if (u) {
-        await setUserPresence(u.uid, true, u.displayName ?? u.email?.split("@")[0] ?? "You");
+        let name = u.displayName ?? u.email?.split("@")[0] ?? "You";
+        if (name === "sbharathkumar1125") name = "Mr. Kumarrr";
+        if (name === "saiswetharr") name = "Mrs. Kumarrr";
+        
+        await setUserPresence(u.uid, true, name);
         const token = await requestNotificationPermission();
         if (token) await saveFCMToken(u.uid, token);
       }
