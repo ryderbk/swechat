@@ -16,8 +16,10 @@ import {
   PinnedMessage,
   unpinMessage,
   UserPresence,
+  subscribeToSharedNote,
   updateSharedNote,
   subscribeToAIMemory,
+  SharedNote,
 } from "@/lib/firestore";
 import { uploadImage, uploadVideo, uploadDocument } from "@/lib/storage";
 import { drawBadge, clearBadge } from "@/lib/faviconBadge";
@@ -125,7 +127,7 @@ function Sidebar({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const unsub = subscribeToSharedNote((note) => {
+    const unsub = subscribeToSharedNote((note: SharedNote | null) => {
       if (note) setContent(note.content);
     });
     return unsub;
