@@ -17,8 +17,8 @@ export function usePartnerUid() {
         const data = other.data();
         if (data.displayName) {
           let name = data.displayName;
-          if (name === "sbharathkumar1125") name = "Mr. Kumarr";
-          if (name === "saiswetharr") name = "Mrs. Kumarr";
+          if (name === "sbharathkumar1125" || name === "Mr. Kumarrr") name = "Mr. Kumarr";
+          if (name === "saiswetharr" || name === "Mrs. Kumarrr") name = "Mrs. Kumarr";
           setPartnerName(name);
         }
       }
