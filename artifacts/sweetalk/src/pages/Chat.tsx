@@ -248,7 +248,11 @@ export default function Chat() {
   const prevMsgCountRef = useRef(0);
 
   const { partnerUid, partnerName } = usePartnerUid();
-  const partnerInitial = partnerName.charAt(0).toUpperCase();
+  const partnerInitial = partnerName.includes("Mr. Kumarr") 
+    ? "B" 
+    : partnerName.includes("Mrs. Kumarr") 
+      ? "S" 
+      : partnerName.charAt(0).toUpperCase();
 
   useEffect(() => {
     document.documentElement.style.setProperty("--chat-font-size", fontSize);
