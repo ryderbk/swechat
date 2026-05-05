@@ -28,6 +28,7 @@ import { EmojiPicker } from "@/components/EmojiPicker";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { CallManager } from "@/components/CallManager";
 import { ChatSettings } from "@/components/ChatSettings";
+import { generatePandaReply } from "@/lib/panda_ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -233,6 +234,7 @@ export default function Chat() {
 
   const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
   const [pinnedExpanded, setPinnedExpanded] = useState(false);
+  const [pandaTyping, setPandaTyping] = useState(false);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wallpaper, setWallpaper] = useState(() => localStorage.getItem("sweetalk_wallpaper") ?? "none");
@@ -391,6 +393,24 @@ export default function Chat() {
         : null,
       linkPreview,
     });
+
+    if (msg.toLowerCase().includes("@panda")) {
+      const cleanMsg = msg.replace(/@panda/gi, "").trim();
+      setPandaTyping(true);
+      // Give it a tiny delay to feel natural
+      setTimeout(async () => {
+        await generatePandaReply(
+          user.uid,
+          user.displayName || "User",
+          partnerName,
+          messages.slice(-50),
+          cleanMsg,
+          replyingTo ? { id: replyingTo.id, text: replyingTo.text ?? "[media]", senderId: replyingTo.senderId } : null
+        );
+        setPandaTyping(false);
+      }, 1000);
+    }
+
     setTimeout(() => scrollToBottom(true), 50);
   };
 
@@ -785,6 +805,18 @@ export default function Chat() {
                 </div>
               );
             })}
+
+            {pandaTyping && (
+              <div className="flex items-center gap-2 px-4 py-2 animate-in fade-in slide-in-from-bottom-2">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-lg">🐼</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-medium text-primary uppercase tracking-wider">Panda</span>
+                  <TypingIndicator />
+                </div>
+              </div>
+            )}
 
             {partnerTyping && <TypingIndicator partnerName={partnerName} />}
             <div ref={bottomRef} />

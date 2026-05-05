@@ -215,6 +215,17 @@ export function MessageBubble({
       onClick={handleTap}
     >
       <div className={`max-w-[85%] relative ${isMine ? "items-end" : "items-start"} flex flex-col`}>
+        {/* AI Profile info */}
+        {message.isAI && (
+          <div className="flex items-center gap-1.5 mb-1 px-1">
+             <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+               <span className="text-xs">🐼</span>
+             </div>
+             <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Panda</span>
+             <span className="text-[8px] bg-primary/10 text-primary px-1 rounded uppercase font-bold">AI</span>
+          </div>
+        )}
+
         {/* Reply preview */}
         {message.replyTo && (
           <button

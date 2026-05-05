@@ -39,12 +39,20 @@ export interface Message {
   reactions: Record<string, string[]>;
   replyTo: { id: string; text: string; senderId: string } | null;
   starred: boolean;
+  isAI?: boolean;
   linkPreview: {
     url: string;
     title: string;
     description: string;
     image: string | null;
   } | null;
+}
+
+export interface AIMemory {
+  summary: string;
+  userAProfile: string;
+  userBProfile: string;
+  lastUpdated: Timestamp;
 }
 
 export interface SharedNote {
@@ -142,6 +150,7 @@ export async function sendMessage(
       description: string;
       image: string | null;
     } | null;
+    isAI?: boolean;
   }
 ) {
   return addDoc(collection(db, "messages"), {
@@ -161,6 +170,7 @@ export async function sendMessage(
     reactions: {},
     replyTo: payload.replyTo ?? null,
     starred: false,
+    isAI: payload.isAI ?? false,
     linkPreview: payload.linkPreview ?? null,
   });
 }
@@ -226,6 +236,24 @@ export async function updateSharedNote(content: string) {
     content,
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function getAIMemory(): Promise<AIMemory | null> {
+  const snap = await getDoc(doc(db, "aiMemory", "main"));
+  return snap.exists() ? (snap.data() as AIMemory) : null;
+}
+
+export function subscribeToAIMemory(callback: (memory: AIMemory | null) => void) {
+  return onSnapshot(doc(db, "aiMemory", "main"), (snap) => {
+    callback(snap.exists() ? (snap.data() as AIMemory) : null);
+  });
+}
+
+export async function updateAIMemory(memory: Partial<AIMemory>) {
+  await setDoc(doc(db, "aiMemory", "main"), {
+    ...memory,
+    lastUpdated: serverTimestamp(),
+  }, { merge: true });
 }
 
 export async function setTypingStatus(uid: string, isTyping: boolean) {
