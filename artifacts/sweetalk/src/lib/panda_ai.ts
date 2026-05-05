@@ -1,8 +1,11 @@
-import { Message, AIMemory, getAIMemory, updateAIMemory, sendMessage, setTypingStatus } from "./firestore";
+import { Message, AIMemory, getAIMemory, updateAIMemory, sendMessage } from "./firestore";
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const MODEL = "llama-3.3-70b-versatile";
 
+/**
+ * Generates a warm, playful, and human-like response from Panda AI.
+ */
 export async function generatePandaReply(
   userId: string,
   userDisplayName: string,
@@ -12,35 +15,42 @@ export async function generatePandaReply(
   replyTo?: { id: string; text: string; senderId: string } | null
 ) {
   try {
-    // 1. Get Memory
+    // 1. Get Evolving Memory
     const memory = await getAIMemory();
     
-    // 2. Prepare Context
-    const systemPrompt = `You are Panda, an AI companion inside a private chat between two people in a close relationship.
-You understand both individuals and their dynamic. Respond naturally, emotionally aware, and contextually relevant.
-Identity: You are friendly, slightly playful, and emotionally aware. You are not a generic assistant; you feel like part of their lives.
-Tone: serious when needed, but usually fun/teasing. Adapt to the current conversation's mood.
+    // 2. Identify Speaker (User A vs User B)
+    // We'll assume User A is Mr. Kumarr and User B is Mrs. Kumarr for personalization if memory fields are empty
+    // But better yet, we just pass the names and let AI figure it out from context.
+    
+    const systemPrompt = `You are Panda, an AI inside a private chat between two people. 
+You know both users and their relationship. You respond only when tagged. 
+You are warm, playful, natural, and emotionally aware. 
+You speak like a real human texting, not like an assistant.
 
-Relationship Context:
-${memory?.summary || "A loving couple starting their journey together."}
+PERSONALITY RULES:
+- Sound like a real person texting.
+- Be slightly playful when appropriate.
+- Be emotionally aware (match tone of conversation).
+- Use casual language (not robotic, not formal).
+- Keep responses concise and conversational.
+- DO NOT sound like a chatbot or assistant.
+- DO NOT give long structured explanations unless asked.
+- DO NOT overuse emojis.
+- Only answer what is asked.
+- If tagged without a question, respond casually (short, friendly).
 
-User A Profile (Mr. Kumarr):
-${memory?.userAProfile || "Kind, caring, and protective."}
+RELATIONSHIP CONTEXT:
+- Relationship Summary: ${memory?.relationshipSummary || "A deep, loving bond between two unique individuals."}
+- User A Profile (${userDisplayName.includes("Mr.") ? userDisplayName : "User A"}): ${memory?.userAProfile || "Kind and thoughtful."}
+- User B Profile (${partnerDisplayName.includes("Mrs.") ? partnerDisplayName : "User B"}): ${memory?.userBProfile || "Supportive and loving."}
+- Important Moments: ${(memory?.importantMoments || []).join(", ") || "Many shared smiles and memories."}
 
-User B Profile (Mrs. Kumarr):
-${memory?.userBProfile || "Sweet, supportive, and loving."}
-
-Recent Conversation History:
+RECENT CHAT HISTORY:
 ${recentMessages.map(m => `${m.senderId === userId ? userDisplayName : (m.isAI ? 'Panda' : partnerDisplayName)}: ${m.text}`).join('\n')}
 
-Rules:
-- Keep responses concise but meaningful.
-- Respect the emotional tone.
-- Do not hallucinate.
-- Refer to them naturally.
-- You are responding to ${userDisplayName}.`;
+You are currently responding to ${userDisplayName}. Use their name or a familiar term if appropriate based on memory.`;
 
-    // 3. Call AI
+    // 3. Call AI for response
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -53,8 +63,8 @@ Rules:
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
         ],
-        temperature: 0.7,
-        max_tokens: 500
+        temperature: 0.8, // Slightly higher for more "human" variability
+        max_tokens: 300
       })
     });
 
@@ -70,8 +80,12 @@ Rules:
     });
 
     // 5. Trigger Memory Update if needed
-    if (recentMessages.length % 20 === 0) {
-      maybeUpdateMemory(recentMessages);
+    // Trigger every 25 messages or if the message seems "meaningful" (emotional or personal)
+    const personalKeywords = /love|feel|remember|future|together|always|anniversary|birthday|holiday|miss|want|promise|plan|sorry|heart|soul|dream/i;
+    const isMeaningful = userMessage.length > 120 || personalKeywords.test(userMessage);
+    
+    if (recentMessages.length % 25 === 0 || isMeaningful) {
+      maybeUpdateMemory(recentMessages, memory);
     }
 
   } catch (error) {
@@ -79,27 +93,38 @@ Rules:
   }
 }
 
-async function maybeUpdateMemory(messages: Message[]) {
+/**
+ * Evolves Panda's memory by analyzing recent messages.
+ */
+async function maybeUpdateMemory(messages: Message[], currentMemory: AIMemory | null) {
   try {
-    const memory = await getAIMemory();
     const historyText = messages.map(m => `${m.senderId}: ${m.text}`).join('\n');
     
-    const prompt = `Based on the following recent conversation history, update the relationship summary and user profiles. 
-Keep it concise but capture new traits, recurring topics, or relationship milestones.
+    const updatePrompt = `Update the AI memory for this relationship based on the last 50 messages.
+Update memory without repeating old info. Keep it concise and meaningful.
+Memory should EVOLVE, not grow infinitely. Overwrite summaries instead of appending blindly.
 
 Current Memory:
-Summary: ${memory?.summary || "N/A"}
-User A: ${memory?.userAProfile || "N/A"}
-User B: ${memory?.userBProfile || "N/A"}
+- Relationship Summary: ${currentMemory?.relationshipSummary || "N/A"}
+- User A Profile: ${currentMemory?.userAProfile || "N/A"}
+- User B Profile: ${currentMemory?.userBProfile || "N/A"}
+- Important Moments: ${(currentMemory?.importantMoments || []).join(", ")}
 
-History:
+New History:
 ${historyText}
+
+Steps:
+1. Merge new insights into relationshipSummary and user profiles.
+2. Extract key moments (memorable events, jokes, patterns).
+3. Avoid redundancy.
+4. Keep memory compact.
 
 Format your response as a JSON object:
 {
-  "summary": "...",
+  "relationshipSummary": "...",
   "userAProfile": "...",
-  "userBProfile": "..."
+  "userBProfile": "...",
+  "importantMoments": ["moment 1", "moment 2", ...]
 }`;
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -110,7 +135,7 @@ Format your response as a JSON object:
       },
       body: JSON.stringify({
         model: MODEL,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: updatePrompt }],
         response_format: { type: "json_object" }
       })
     });
@@ -118,8 +143,13 @@ Format your response as a JSON object:
     const data = await response.json();
     const newMemory = JSON.parse(data.choices[0].message.content);
     
+    // Ensure we don't lose the array of moments if AI returns something weird
+    if (!Array.isArray(newMemory.importantMoments)) {
+      newMemory.importantMoments = currentMemory?.importantMoments || [];
+    }
+
     await updateAIMemory(newMemory);
-    console.log("Panda Memory Updated");
+    console.log("Panda Evolving Memory Updated");
   } catch (err) {
     console.error("Failed to update Panda memory:", err);
   }

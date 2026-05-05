@@ -49,9 +49,10 @@ export interface Message {
 }
 
 export interface AIMemory {
-  summary: string;
+  relationshipSummary: string;
   userAProfile: string;
   userBProfile: string;
+  importantMoments: string[];
   lastUpdated: Timestamp;
 }
 

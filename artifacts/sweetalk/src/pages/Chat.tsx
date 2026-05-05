@@ -395,20 +395,29 @@ export default function Chat() {
     });
 
     if (msg.toLowerCase().includes("@panda")) {
+      // Clean input: Remove "@panda" and trim
       const cleanMsg = msg.replace(/@panda/gi, "").trim();
+      
+      // Show "Panda is typing..."
       setPandaTyping(true);
-      // Give it a tiny delay to feel natural
+      
+      // Natural delay (simulate thinking: 1-3 seconds)
+      const thinkingDelay = Math.floor(Math.random() * 1500) + 1000;
+      
       setTimeout(async () => {
-        await generatePandaReply(
-          user.uid,
-          user.displayName || "User",
-          partnerName,
-          messages.slice(-50),
-          cleanMsg,
-          replyingTo ? { id: replyingTo.id, text: replyingTo.text ?? "[media]", senderId: replyingTo.senderId } : null
-        );
-        setPandaTyping(false);
-      }, 1000);
+        try {
+          await generatePandaReply(
+            user.uid,
+            user.displayName || "User",
+            partnerName,
+            messages.slice(-50), // Last 50 messages for context
+            cleanMsg,
+            replyingTo ? { id: replyingTo.id, text: replyingTo.text ?? "[media]", senderId: replyingTo.senderId } : null
+          );
+        } finally {
+          setPandaTyping(false);
+        }
+      }, thinkingDelay);
     }
 
     setTimeout(() => scrollToBottom(true), 50);
