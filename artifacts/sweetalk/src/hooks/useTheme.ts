@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { applyTheme } from "@/lib/themes";
 
 export function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -6,6 +7,14 @@ export function useTheme() {
       return (localStorage.getItem("theme") as "light" | "dark") ?? "light";
     } catch {
       return "light";
+    }
+  });
+
+  const [colorTheme, setColorTheme] = useState<string>(() => {
+    try {
+      return localStorage.getItem("color_theme") ?? "default";
+    } catch {
+      return "default";
     }
   });
 
@@ -17,9 +26,16 @@ export function useTheme() {
       root.classList.remove("dark");
     }
     localStorage.setItem("theme", theme);
-  }, [theme]);
+    applyTheme(colorTheme, theme === "dark");
+  }, [theme, colorTheme]);
 
   const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"));
 
-  return { theme, toggle };
+  const setThemeColor = (name: string) => {
+    setColorTheme(name);
+    localStorage.setItem("color_theme", name);
+    applyTheme(name, theme === "dark");
+  };
+
+  return { theme, toggle, colorTheme, setThemeColor };
 }

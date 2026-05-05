@@ -12,18 +12,24 @@ import {
   subscribeToTyping,
   subscribeToPresence,
   markMessagesRead,
+  subscribeToPinnedMessages,
+  PinnedMessage,
+  unpinMessage,
   UserPresence,
 } from "@/lib/firestore";
-import { uploadImage } from "@/lib/storage";
+import { uploadImage, uploadVideo, uploadDocument } from "@/lib/storage";
+import { drawBadge, clearBadge } from "@/lib/faviconBadge";
+import { queueMessage, getQueuedMessages, removeQueuedMessage } from "@/lib/offlineQueue";
 import { MessageBubble } from "@/components/MessageBubble";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { SharedNote } from "@/components/SharedNote";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
+import { CallManager } from "@/components/CallManager";
+import { ChatSettings } from "@/components/ChatSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Moon,
   Sun,
@@ -39,6 +45,22 @@ import {
   MessageCircleHeart,
   PanelRightOpen,
   PanelRightClose,
+  Star,
+  Search,
+  X,
+  ChevronUp,
+  Paperclip,
+  Video as VideoIcon,
+  FileText,
+  Phone,
+  Video,
+  Settings,
+  Pin,
+  Reply,
+  Bold,
+  Italic,
+  Strikethrough,
+  Code,
 } from "lucide-react";
 import { formatDistanceToNow, differenceInDays } from "date-fns";
 
@@ -57,6 +79,32 @@ const SWEET_PROMPTS = [
   "What I appreciate most about you right now is...",
 ];
 
+const URL_REGEX = /https?:\/\/[^\s/$.?#].[^\s]*/i;
+
+async function fetchLinkPreview(url: string) {
+  try {
+    const res = await fetch(
+      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    const data = await res.json();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(data.contents, "text/html");
+    const getMeta = (prop: string) =>
+      doc.querySelector(`meta[property="og:${prop}"]`)?.getAttribute("content") ??
+      doc.querySelector(`meta[name="${prop}"]`)?.getAttribute("content") ??
+      null;
+    return {
+      url,
+      title: getMeta("title") ?? doc.title ?? url,
+      description: getMeta("description") ?? "",
+      image: getMeta("image"),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function Sidebar({
   partnerName,
   prompt,
@@ -71,7 +119,6 @@ function Sidebar({
 
   return (
     <div className="flex flex-col gap-3 p-4 h-full">
-      {/* Anniversary */}
       <div className="bg-card border border-border rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-2">
           <CalendarDays className="w-4 h-4 text-primary" />
@@ -84,7 +131,6 @@ function Sidebar({
         <p className="text-xs text-muted-foreground mt-1">Since June 1, 2024</p>
       </div>
 
-      {/* Thinking of You */}
       <div className="bg-card border border-border rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <MessageCircleHeart className="w-4 h-4 text-primary" />
@@ -107,7 +153,6 @@ function Sidebar({
         </Button>
       </div>
 
-      {/* Photo Album */}
       <Button
         data-testid="button-album"
         variant="outline"
@@ -137,14 +182,40 @@ export default function Chat() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [prompt, setPrompt] = useState(SWEET_PROMPTS[0]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showFileMenu, setShowFileMenu] = useState(false);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchMatchIds, setSearchMatchIds] = useState<string[]>([]);
+  const [searchIdx, setSearchIdx] = useState(0);
+
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
+  const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
+  const [pinnedExpanded, setPinnedExpanded] = useState(false);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wallpaper, setWallpaper] = useState(() => localStorage.getItem("sweetalk_wallpaper") ?? "none");
+  const [bubbleColor, setBubbleColor] = useState(() => localStorage.getItem("sweetalk_bubble_color") ?? "");
+  const [bubbleShape, setBubbleShape] = useState(() => localStorage.getItem("sweetalk_bubble_shape") ?? "rounded");
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem("sweetalk_font_size") ?? "15px");
+
+  const [showFormatToolbar, setShowFormatToolbar] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAtBottomRef = useRef(true);
   const prevMsgCountRef = useRef(0);
 
   const { partnerUid, partnerName } = usePartnerUid();
+  const partnerInitial = partnerName.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--chat-font-size", fontSize);
+  }, [fontSize]);
 
   const scrollToBottom = useCallback((smooth = true) => {
     bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
@@ -163,15 +234,14 @@ export default function Chat() {
         markMessagesRead(incoming.map((m) => m.id));
       }
 
-      setUnreadCount(
-        msgs.filter((m) => m.senderId !== user.uid && m.status !== "read").length
-      );
+      const unread = msgs.filter(
+        (m) => m.senderId !== user.uid && m.status !== "read"
+      ).length;
+      setUnreadCount(unread);
 
       if (msgs.length > prevMsgCountRef.current && prevMsgCountRef.current > 0) {
         const newest = msgs[msgs.length - 1];
-        if (newest?.senderId !== user.uid) {
-          playChime();
-        }
+        if (newest?.senderId !== user.uid) playChime();
         if (isAtBottomRef.current) {
           setTimeout(() => scrollToBottom(true), 50);
         } else {
@@ -187,6 +257,11 @@ export default function Chat() {
   }, [user, playChime, scrollToBottom]);
 
   useEffect(() => {
+    if (unreadCount > 0) drawBadge(unreadCount);
+    else clearBadge();
+  }, [unreadCount]);
+
+  useEffect(() => {
     if (!user || !partnerUid) return;
     const unsub = subscribeToTyping(partnerUid, setPartnerTyping);
     const unsub2 = subscribeToPresence(partnerUid, setPartnerPresence);
@@ -194,9 +269,34 @@ export default function Chat() {
   }, [user, partnerUid]);
 
   useEffect(() => {
+    const unsub = subscribeToPinnedMessages(setPinnedMessages);
+    return unsub;
+  }, []);
+
+  useEffect(() => {
     const base = "SweeTalk";
     document.title = unreadCount > 0 ? `(${unreadCount}) ${base}` : base;
   }, [unreadCount]);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSearchMatchIds([]);
+      return;
+    }
+    const term = searchTerm.toLowerCase();
+    const ids = messages
+      .filter((m) => m.text?.toLowerCase().includes(term))
+      .map((m) => m.id);
+    setSearchMatchIds(ids);
+    setSearchIdx(0);
+  }, [searchTerm, messages]);
+
+  useEffect(() => {
+    if (searchMatchIds.length === 0) return;
+    const id = searchMatchIds[searchIdx];
+    const el = document.querySelector(`[data-message-id="${id}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [searchMatchIds, searchIdx]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -227,9 +327,29 @@ export default function Chat() {
     if (!text.trim() || !user) return;
     const msg = text.trim();
     setText("");
+    setReplyingTo(null);
     setTypingStatus(user.uid, false);
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    await sendMessage(user.uid, { text: msg, type: "text" });
+
+    if (!navigator.onLine) {
+      await queueMessage({ senderId: user.uid, payload: { text: msg, type: "text" } });
+      return;
+    }
+
+    const urlMatch = msg.match(URL_REGEX);
+    let linkPreview = null;
+    if (urlMatch) {
+      linkPreview = await fetchLinkPreview(urlMatch[0]);
+    }
+
+    await sendMessage(user.uid, {
+      text: msg,
+      type: "text",
+      replyTo: replyingTo
+        ? { id: replyingTo.id, text: replyingTo.text ?? "[media]", senderId: replyingTo.senderId }
+        : null,
+      linkPreview,
+    });
     setTimeout(() => scrollToBottom(true), 50);
   };
 
@@ -237,12 +357,57 @@ export default function Chat() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setUploading(true);
+    setUploadProgress(0);
     try {
       const url = await uploadImage(file);
       await sendMessage(user.uid, { type: "image", imageUrl: url });
       setTimeout(() => scrollToBottom(true), 50);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      e.target.value = "";
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 100 * 1024 * 1024) {
+      alert("Video must be under 100MB");
+      return;
+    }
+    setUploading(true);
+    setUploadProgress(0);
+    setShowFileMenu(false);
+    try {
+      const url = await uploadVideo(file, setUploadProgress);
+      await sendMessage(user.uid, { type: "video", videoUrl: url });
+      setTimeout(() => scrollToBottom(true), 50);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      e.target.value = "";
+    }
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploading(true);
+    setUploadProgress(0);
+    setShowFileMenu(false);
+    try {
+      const url = await uploadDocument(file, setUploadProgress);
+      await sendMessage(user.uid, {
+        type: "document",
+        documentUrl: url,
+        documentName: file.name,
+        documentSize: file.size,
+      });
+      setTimeout(() => scrollToBottom(true), 50);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
       e.target.value = "";
     }
   };
@@ -266,7 +431,50 @@ export default function Chat() {
     setPrompt(SWEET_PROMPTS[Math.floor(Math.random() * SWEET_PROMPTS.length)]);
   };
 
-  const partnerInitial = partnerName.charAt(0).toUpperCase();
+  const handleJumpTo = (id: string) => {
+    const el = document.querySelector(`[data-message-id="${id}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleWrapFormat = (marker: string) => {
+    const input = inputRef.current;
+    if (!input) return;
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    const selected = text.slice(start, end);
+    if (selected) {
+      const newText = text.slice(0, start) + marker + selected + marker + text.slice(end);
+      setText(newText);
+    } else {
+      const newText = text + marker + marker;
+      setText(newText);
+      setTimeout(() => {
+        input.setSelectionRange(newText.length - marker.length, newText.length - marker.length);
+        input.focus();
+      }, 0);
+    }
+  };
+
+  const handleWallpaperChange = (v: string) => {
+    setWallpaper(v);
+    localStorage.setItem("sweetalk_wallpaper", v);
+  };
+
+  const handleBubbleColorChange = (v: string) => {
+    setBubbleColor(v);
+    localStorage.setItem("sweetalk_bubble_color", v);
+  };
+
+  const handleBubbleShapeChange = (v: string) => {
+    setBubbleShape(v);
+    localStorage.setItem("sweetalk_bubble_shape", v);
+  };
+
+  const handleFontSizeChange = (v: string) => {
+    setFontSize(v);
+    localStorage.setItem("sweetalk_font_size", v);
+    document.documentElement.style.setProperty("--chat-font-size", v);
+  };
 
   const presenceLabel = partnerPresence
     ? partnerPresence.online
@@ -276,8 +484,17 @@ export default function Chat() {
       : "Offline"
     : "Offline";
 
+  const wallpaperStyle = wallpaper && wallpaper !== "none"
+    ? wallpaper.startsWith("url(")
+      ? { backgroundImage: wallpaper, backgroundSize: "cover", backgroundPosition: "center" }
+      : { backgroundImage: wallpaper }
+    : undefined;
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* CallManager always mounted */}
+      <CallManager />
+
       {/* Header */}
       <header className="flex-shrink-0 bg-card/80 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3 shadow-sm z-10">
         <Avatar className="w-9 h-9 ring-2 ring-primary/30">
@@ -296,6 +513,42 @@ export default function Chat() {
         </div>
         <div className="flex items-center gap-1">
           <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl text-muted-foreground"
+            onClick={() => document.getElementById("start-voice-call")?.click()}
+            title="Voice call"
+          >
+            <Phone className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl text-muted-foreground"
+            onClick={() => document.getElementById("start-video-call")?.click()}
+            title="Video call"
+          >
+            <Video className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl text-muted-foreground"
+            onClick={() => setLocation("/starred")}
+            title="Starred messages"
+          >
+            <Star className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl text-muted-foreground"
+            onClick={() => setSearchOpen((v) => !v)}
+            title="Search"
+          >
+            <Search className="w-4 h-4" />
+          </Button>
+          <Button
             data-testid="button-sound-toggle"
             variant="ghost"
             size="icon"
@@ -312,6 +565,15 @@ export default function Chat() {
             onClick={toggleTheme}
           >
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl text-muted-foreground"
+            onClick={() => setSettingsOpen(true)}
+            title="Settings"
+          >
+            <Settings className="w-4 h-4" />
           </Button>
           <Button
             data-testid="button-sidebar-toggle"
@@ -334,6 +596,50 @@ export default function Chat() {
         </div>
       </header>
 
+      {/* Search bar */}
+      {searchOpen && (
+        <div className="flex-shrink-0 bg-card/80 backdrop-blur border-b border-border px-3 py-2 flex items-center gap-2 animate-in slide-in-from-top-2">
+          <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <input
+            autoFocus
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") { setSearchOpen(false); setSearchTerm(""); }
+            }}
+            placeholder="Search messages…"
+            className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+          />
+          {searchTerm && (
+            <span className="text-xs text-muted-foreground">
+              {searchMatchIds.length} result{searchMatchIds.length !== 1 ? "s" : ""}
+            </span>
+          )}
+          {searchMatchIds.length > 1 && (
+            <>
+              <button
+                onClick={() => setSearchIdx((i) => (i - 1 + searchMatchIds.length) % searchMatchIds.length)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setSearchIdx((i) => (i + 1) % searchMatchIds.length)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => { setSearchOpen(false); setSearchTerm(""); }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Main chat column */}
@@ -341,14 +647,78 @@ export default function Chat() {
           {/* Shared note */}
           <SharedNote />
 
+          {/* Pinned messages */}
+          {pinnedMessages.length > 0 && (
+            <div className="flex-shrink-0 bg-card/60 border-b border-border px-4 py-2">
+              {pinnedMessages.length === 1 ? (
+                <div className="flex items-center gap-2">
+                  <Pin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  <span className="text-xs text-foreground flex-1 truncate">
+                    {pinnedMessages[0].messageText}
+                  </span>
+                  <button
+                    onClick={() => handleJumpTo(pinnedMessages[0].messageId)}
+                    className="text-xs text-primary hover:opacity-80"
+                  >
+                    Jump
+                  </button>
+                  <button
+                    onClick={() => unpinMessage(pinnedMessages[0].messageId)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setPinnedExpanded((v) => !v)}
+                    className="flex items-center gap-2 w-full text-left"
+                  >
+                    <Pin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                    <span className="text-xs text-foreground flex-1">
+                      📌 {pinnedMessages.length} pinned messages
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${pinnedExpanded ? "rotate-180" : ""}`} />
+                  </button>
+                  {pinnedExpanded && (
+                    <div className="mt-2 space-y-1.5 animate-in slide-in-from-top-2">
+                      {pinnedMessages.map((pm) => (
+                        <div key={pm.id} className="flex items-center gap-2 pl-5">
+                          <span className="text-xs text-foreground flex-1 truncate">{pm.messageText}</span>
+                          <button
+                            onClick={() => handleJumpTo(pm.messageId)}
+                            className="text-xs text-primary hover:opacity-80"
+                          >
+                            Jump
+                          </button>
+                          <button
+                            onClick={() => unpinMessage(pm.messageId)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Messages */}
           <div
             ref={scrollRef}
             onScroll={handleScroll}
             className="flex-1 overflow-y-auto py-2 relative"
+            style={wallpaperStyle}
           >
+            {wallpaperStyle && (
+              <div className="absolute inset-0 bg-background/60 pointer-events-none" />
+            )}
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center px-8">
+              <div className="flex flex-col items-center justify-center h-full text-center px-8 relative">
                 <Heart className="w-10 h-10 text-primary/40 fill-current mb-3" />
                 <p className="text-muted-foreground text-sm">
                   Your conversation starts here. Say something sweet.
@@ -357,12 +727,19 @@ export default function Chat() {
             )}
 
             {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isMine={msg.senderId === user?.uid}
-                myUid={user?.uid ?? ""}
-              />
+              <div key={msg.id} className="relative">
+                <MessageBubble
+                  message={msg}
+                  isMine={msg.senderId === user?.uid}
+                  myUid={user?.uid ?? ""}
+                  searchTerm={searchOpen ? searchTerm : undefined}
+                  onReply={setReplyingTo}
+                  onJumpTo={handleJumpTo}
+                  bubbleColor={bubbleColor}
+                  bubbleShape={bubbleShape}
+                  fontSize={fontSize}
+                />
+              </div>
             ))}
 
             {partnerTyping && <TypingIndicator partnerName={partnerName} />}
@@ -381,6 +758,74 @@ export default function Chat() {
                 <ChevronDown className="w-3.5 h-3.5" />
                 {unreadCount > 0 ? `${unreadCount} new` : "New messages"}
               </Button>
+            </div>
+          )}
+
+          {/* Upload progress */}
+          {uploading && (
+            <div className="flex-shrink-0 bg-card/80 border-t border-border px-4 py-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Uploading…</span>
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">{Math.round(uploadProgress)}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Reply preview */}
+          {replyingTo && (
+            <div className="flex-shrink-0 bg-card/80 border-t border-border px-4 py-2 flex items-center gap-2">
+              <Reply className="w-4 h-4 text-primary flex-shrink-0" />
+              <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
+                <p className="text-xs font-medium text-primary">
+                  {replyingTo.senderId === user?.uid ? "You" : partnerName}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {replyingTo.text ?? "[media]"}
+                </p>
+              </div>
+              <button onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Formatting toolbar */}
+          {showFormatToolbar && (
+            <div className="flex-shrink-0 bg-card/80 border-t border-border px-3 py-1.5 flex items-center gap-1">
+              <button
+                onClick={() => handleWrapFormat("*")}
+                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
+                title="Bold"
+              >
+                <Bold className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleWrapFormat("_")}
+                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
+                title="Italic"
+              >
+                <Italic className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleWrapFormat("~")}
+                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
+                title="Strikethrough"
+              >
+                <Strikethrough className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleWrapFormat("`")}
+                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
+                title="Monospace"
+              >
+                <Code className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
@@ -409,13 +854,54 @@ export default function Chat() {
                 </Button>
               </label>
 
+              {/* File picker */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  className="rounded-xl text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowFileMenu((v) => !v)}
+                  disabled={uploading}
+                >
+                  <Paperclip className="w-5 h-5" />
+                </Button>
+                {showFileMenu && (
+                  <div className="absolute bottom-10 left-0 bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-30 min-w-[160px]">
+                    <label className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted cursor-pointer">
+                      <input
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={handleVideoUpload}
+                      />
+                      <VideoIcon className="w-4 h-4 text-muted-foreground" />
+                      Video
+                    </label>
+                    <label className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.zip"
+                        className="hidden"
+                        onChange={handleDocUpload}
+                      />
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      Document
+                    </label>
+                  </div>
+                )}
+              </div>
+
               <VoiceRecorder onVoiceReady={handleVoiceReady} />
 
               <div className="flex-1">
                 <Input
+                  ref={inputRef}
                   data-testid="input-message"
                   value={text}
                   onChange={(e) => handleTyping(e.target.value)}
+                  onFocus={() => setShowFormatToolbar(true)}
+                  onBlur={() => setTimeout(() => setShowFormatToolbar(false), 200)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
                   }}
@@ -448,6 +934,25 @@ export default function Chat() {
           </aside>
         )}
       </div>
+
+      {/* Click outside to close file menu */}
+      {showFileMenu && (
+        <div className="fixed inset-0 z-20" onClick={() => setShowFileMenu(false)} />
+      )}
+
+      {/* Chat Settings panel */}
+      <ChatSettings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        wallpaper={wallpaper}
+        onWallpaperChange={handleWallpaperChange}
+        bubbleColor={bubbleColor}
+        onBubbleColorChange={handleBubbleColorChange}
+        bubbleShape={bubbleShape}
+        onBubbleShapeChange={handleBubbleShapeChange}
+        fontSize={fontSize}
+        onFontSizeChange={handleFontSizeChange}
+      />
     </div>
   );
 }

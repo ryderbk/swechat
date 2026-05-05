@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import {
   User,
   signInWithEmailAndPassword,
@@ -9,7 +9,9 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { setUserPresence } from "@/lib/firestore";
+import { requestNotificationPermission, onForegroundMessage } from "@/lib/firebase";
+import { setUserPresence, saveFCMToken } from "@/lib/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextValue {
   user: User | null;
@@ -25,9 +27,14 @@ export const AuthContext = createContext<AuthContextValue>({
   signOut: async () => {},
 });
 
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -35,10 +42,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (u) {
         await setUserPresence(u.uid, true, u.displayName ?? u.email?.split("@")[0] ?? "You");
+        const token = await requestNotificationPermission();
+        if (token) await saveFCMToken(u.uid, token);
       }
     });
     return unsub;
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubFg = onForegroundMessage((payload) => {
+      const senderId = payload.data?.senderId;
+      if (senderId === user.uid) return;
+      toast({
+        title: payload.notification?.title ?? "SweeTalk",
+        description: payload.notification?.body ?? "New message",
+        duration: 4000,
+      });
+    });
+    return unsubFg;
+  }, [user, toast]);
 
   useEffect(() => {
     if (!user) return;
