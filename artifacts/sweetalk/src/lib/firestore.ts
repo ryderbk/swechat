@@ -21,11 +21,21 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+export interface GameData {
+  gameType: string;
+  gameName: string;
+  emoji: string;
+  result: string;
+  pandaComment: string;
+  matched?: boolean;
+  score?: number;
+}
+
 export interface Message {
   id: string;
   senderId: string;
   text: string | null;
-  type: "text" | "image" | "voice" | "video" | "document";
+  type: "text" | "image" | "voice" | "video" | "document" | "game";
   imageUrl: string | null;
   voiceUrl: string | null;
   videoUrl: string | null;
@@ -40,6 +50,7 @@ export interface Message {
   replyTo: { id: string; text: string; senderId: string } | null;
   starred: boolean;
   isAI?: boolean;
+  gameData?: GameData | null;
   linkPreview: {
     url: string;
     title: string;
@@ -137,7 +148,7 @@ export async function sendMessage(
   senderId: string,
   payload: {
     text?: string | null;
-    type: "text" | "image" | "voice" | "video" | "document";
+    type: "text" | "image" | "voice" | "video" | "document" | "game";
     imageUrl?: string | null;
     voiceUrl?: string | null;
     videoUrl?: string | null;
@@ -152,6 +163,7 @@ export async function sendMessage(
       image: string | null;
     } | null;
     isAI?: boolean;
+    gameData?: GameData | null;
   }
 ) {
   return addDoc(collection(db, "messages"), {
@@ -173,6 +185,7 @@ export async function sendMessage(
     starred: false,
     isAI: payload.isAI ?? false,
     linkPreview: payload.linkPreview ?? null,
+    gameData: payload.gameData ?? null,
   });
 }
 

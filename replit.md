@@ -57,40 +57,85 @@ pnpm workspace monorepo using TypeScript. SweeTalk is a private couples chat app
 
 ## File Structure (sweetalk artifact)
 
+### Features Added (v3 — Games System)
+21. **Games Panel** — 🎮 button in header opens left-side GamePanel with 14 games; sidebar auto-hides
+22. **Panda AI (Games)** — `lib/panda.ts` uses Groq API for question generation, answer evaluation, reveal comments
+23. **Game Firestore** — `lib/gameFirestore.ts`: all game state under `games/{type}/rounds/`, `pandaMemory/main`
+24. **Game Message Bubbles** — MessageBubble renders `type:"game"` as a special gradient card in chat
+25. **14 Games**: This or That, Answer & Reveal, Guess My Answer, Secret Unlock, Daily Question, Memory Quiz, Truth or Dare, Complete the Sentence, Rapid Fire, Random Question, Scoreboard, Mood Sync, Build Our World, Ask Panda
+
+## Themes (v3)
+5 romantic themes: Blush Love (default), Rose Night (dark), Lavender Dream, Sunset Romance, Classic Love
+- Applied via `lib/themes.ts` + `applyTheme()` + `useTheme` (defaults to "blush")
+- ThemeSelector shows vertical list with emoji, label, dark badge, checkmark
+
+## File Structure (sweetalk artifact)
+
 ```
 artifacts/sweetalk/src/
 ├── App.tsx                        (routes: /, /chat, /album, /starred, /setup-pin)
 ├── pages/
-│   ├── Chat.tsx                   (all features wired in)
-│   ├── Login.tsx                  (email/password login)
+│   ├── Chat.tsx                   (gamePanelOpen state + GamePanel + game button + sendGameMessage)
+│   ├── Login.tsx
 │   ├── Album.tsx                  (3 tabs: photos, links, files)
-│   ├── Starred.tsx                (NEW: starred messages)
-│   └── SetupPin.tsx               (NEW: PIN setup wizard)
+│   ├── Starred.tsx
+│   └── SetupPin.tsx
 ├── components/
-│   ├── MessageBubble.tsx          (video, doc, reply, star, format, double-tap, reactions)
-│   ├── EmojiPicker.tsx            (supports custom trigger)
+│   ├── MessageBubble.tsx          (game bubble branch for type:"game")
+│   ├── games/
+│   │   ├── GamePanel.tsx          (shell: menu grid + active game routing)
+│   │   ├── PandaAvatar.tsx        (PandaAvatar, PandaBubble, PandaThinking, ConfettiBurst)
+│   │   ├── ThisOrThat.tsx         (both pick secretly, reveal + Panda comment)
+│   │   ├── AnswerReveal.tsx       (category → both answer → reveal side-by-side)
+│   │   ├── GuessMyAnswer.tsx      (answerer hides answer, guesser tries, Panda scores)
+│   │   ├── SecretUnlock.tsx       (create Q+secret, partner guesses)
+│   │   ├── OneQuestionADay.tsx    (daily Firestore doc, streak tracking)
+│   │   ├── MemoryQuiz.tsx         (5 Panda-generated MCQ questions)
+│   │   ├── TruthOrDare.tsx        (pick type + vibe, Panda generates prompt)
+│   │   ├── CompleteSentence.tsx   (Panda gives starter, both complete secretly)
+│   │   ├── RapidFire.tsx          (30s timer, tap-to-answer rapid questions)
+│   │   ├── RandomQuestion.tsx     (category pick, Panda generates, discuss)
+│   │   ├── Scoreboard.tsx         (total pts, game counts, history)
+│   │   ├── MoodSync.tsx           (pick mood per hour, reveal simultaneously)
+│   │   ├── BuildOurWorld.tsx      (unlock world items at game round milestones)
+│   │   └── AskPanda.tsx           (open chat with Panda AI for advice)
+│   ├── EmojiPicker.tsx
 │   ├── VoiceRecorder.tsx
-│   ├── SharedNote.tsx
 │   ├── TypingIndicator.tsx
-│   ├── CallManager.tsx            (NEW: WebRTC call UI)
-│   ├── PinLock.tsx                (NEW: PIN/biometric lock overlay)
-│   ├── ChatSettings.tsx           (NEW: settings panel)
-│   ├── ThemeSelector.tsx          (NEW: 10 theme swatches)
-│   └── WallpaperSelector.tsx      (NEW: wallpaper picker)
+│   ├── CallManager.tsx
+│   ├── PinLock.tsx
+│   ├── ChatSettings.tsx
+│   ├── ThemeSelector.tsx
+│   └── WallpaperSelector.tsx
 ├── lib/
-│   ├── firebase.ts                (+ FCM)
-│   ├── firestore.ts               (updated Message type + all new helpers)
-│   ├── storage.ts                 (+ uploadVideo, uploadDocument)
-│   ├── webrtc.ts                  (NEW: WebRTC signaling)
-│   ├── crypto.ts                  (NEW: AES-GCM encryption)
-│   ├── biometric.ts               (NEW: WebAuthn)
-│   ├── themes.ts                  (NEW: 10 theme definitions)
-│   ├── faviconBadge.ts            (NEW: canvas favicon badge)
-│   ├── offlineQueue.ts            (NEW: IndexedDB message queue)
-│   └── formatText.tsx             (NEW: text formatting parser)
+│   ├── firebase.ts
+│   ├── firestore.ts               (Message + GameData types; sendMessage supports "game" type)
+│   ├── gameFirestore.ts           (NEW: all game Firestore helpers + pandaMemory)
+│   ├── panda.ts                   (NEW: Groq API wrapper for games — generateQuestion, evaluateAnswer, etc.)
+│   ├── panda_ai.ts                (existing: Panda chat replies)
+│   ├── storage.ts
+│   ├── webrtc.ts
+│   ├── crypto.ts
+│   ├── biometric.ts
+│   ├── themes.ts                  (5 romantic themes)
+│   ├── faviconBadge.ts
+│   ├── offlineQueue.ts
+│   └── formatText.tsx
 ├── hooks/
-│   ├── useTheme.ts                (updated: color themes)
-│   └── usePinLock.ts              (NEW: PIN state + SHA-256)
+│   ├── useTheme.ts                (defaults to "blush")
+│   └── usePinLock.ts
 └── contexts/
-    └── AuthContext.tsx            (+ FCM token + foreground notifications)
+    └── AuthContext.tsx
 ```
+
+## Firestore Collections
+- `messages/` — chat messages (type: text|image|voice|video|document|game)
+- `games/{gameType}/rounds/` — game state per round
+- `games/dailyquestion/days/` — one doc per date key
+- `games/moods/entries/` — one doc per hour key
+- `games/ourworld/rooms/main` — world items + round count
+- `pandaMemory/main` — evolving Panda game context
+- `userPresence/`, `typingStatus/`, `pinnedMessages/`, `sharedNote/`, `aiMemory/`, `calls/`, `userPreferences/`
+
+## Firestore Rules
+Rules file at `artifacts/sweetalk/firestore.rules` — must be copy-pasted to Firebase Console → Firestore → Rules (not auto-deployed).

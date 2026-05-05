@@ -29,6 +29,8 @@ import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { CallManager } from "@/components/CallManager";
 import { ChatSettings } from "@/components/ChatSettings";
 import { generatePandaReply } from "@/lib/panda_ai";
+import GamePanel from "@/components/games/GamePanel";
+import { GameData } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -59,6 +61,7 @@ import {
   Settings,
   Pin,
   Reply,
+  Gamepad2,
 } from "lucide-react";
 import { formatDistanceToNow, differenceInDays } from "date-fns";
 
@@ -107,10 +110,12 @@ function Sidebar({
   partnerName,
   prompt,
   onNewPrompt,
+  onPlayGame,
 }: {
   partnerName: string;
   prompt: string;
   onNewPrompt: () => void;
+  onPlayGame: () => void;
 }) {
   const [, setLocation] = useLocation();
   const daysTogether = differenceInDays(new Date(), ANNIVERSARY_DATE);
@@ -196,6 +201,15 @@ function Sidebar({
 
       <Button
         variant="outline"
+        className="w-full rounded-xl gap-2 h-11 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-semibold"
+        onClick={onPlayGame}
+      >
+        <Gamepad2 className="w-4 h-4" />
+        Play a Game
+      </Button>
+
+      <Button
+        variant="outline"
         className="w-full rounded-xl gap-2 h-11 border-border/60 hover:bg-muted"
         onClick={() => setLocation("/media")}
       >
@@ -220,6 +234,7 @@ export default function Chat() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [soundOn, setSoundOn] = useState(isSoundEnabled());
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [gamePanelOpen, setGamePanelOpen] = useState(false);
   const [prompt, setPrompt] = useState(SWEET_PROMPTS[0]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -524,6 +539,16 @@ export default function Chat() {
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  const handleSendGameMessage = async (gameData: GameData) => {
+    if (!user) return;
+    await sendMessage(user.uid, {
+      type: "game",
+      text: `${gameData.emoji} ${gameData.gameName}: ${gameData.result}`,
+      gameData,
+    });
+    setTimeout(() => scrollToBottom(true), 50);
+  };
+
   const handleWallpaperChange = (v: string) => {
     setWallpaper(v);
     localStorage.setItem("sweetalk_wallpaper", v);
@@ -645,11 +670,20 @@ export default function Chat() {
             <Settings className="w-4 h-4" />
           </Button>
           <Button
+            variant="ghost"
+            size="icon"
+            className={`rounded-xl hidden md:flex ${gamePanelOpen ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+            onClick={() => { setGamePanelOpen((v) => !v); if (!gamePanelOpen) setSidebarOpen(false); }}
+            title="Play a game"
+          >
+            <Gamepad2 className="w-4 h-4" />
+          </Button>
+          <Button
             data-testid="button-sidebar-toggle"
             variant="ghost"
             size="icon"
             className="rounded-xl text-muted-foreground hidden md:flex"
-            onClick={() => setSidebarOpen((v) => !v)}
+            onClick={() => { setSidebarOpen((v) => !v); setGamePanelOpen(false); }}
           >
             {sidebarOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
           </Button>
@@ -711,6 +745,20 @@ export default function Chat() {
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Game panel — left */}
+        {gamePanelOpen && (
+          <aside className="hidden md:flex flex-col w-80 border-r border-border bg-background overflow-hidden flex-shrink-0">
+            <GamePanel
+              uid={user?.uid ?? ""}
+              partnerUid={partnerUid}
+              partnerName={partnerName}
+              myName={(user?.displayName ?? "You").replace(/sbharathkumar1125|Mr\.?\s*Kumarr*/gi, "Bharath Kumar").replace(/saiswetharr|Mrs\.?\s*Kumarr*/gi, "Saiswetha")}
+              onSendToChat={handleSendGameMessage}
+              onClose={() => setGamePanelOpen(false)}
+            />
+          </aside>
+        )}
+
         {/* Main chat column */}
         <div className="flex flex-col flex-1 overflow-hidden">
 
@@ -1015,12 +1063,13 @@ export default function Chat() {
         </div>
 
         {/* Sidebar */}
-        {sidebarOpen && (
+        {sidebarOpen && !gamePanelOpen && (
           <aside className="hidden md:flex flex-col w-72 border-l border-border bg-background overflow-y-auto flex-shrink-0">
             <Sidebar
               partnerName={partnerName}
               prompt={prompt}
               onNewPrompt={handleNewPrompt}
+              onPlayGame={() => { setGamePanelOpen(true); setSidebarOpen(false); }}
             />
           </aside>
         )}

@@ -192,6 +192,36 @@ export function MessageBubble({
     );
   }
 
+  if (message.type === "game" && message.gameData) {
+    const gd = message.gameData;
+    return (
+      <div
+        data-message-id={message.id}
+        className={`flex ${isMine ? "justify-end" : "justify-start"} px-4 ${isGrouped ? "mb-0.5" : "mb-2"}`}
+      >
+        <div className="max-w-[85%] bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/30 rounded-2xl p-3 shadow-sm">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-lg">{gd.emoji}</span>
+            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{gd.gameName}</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">{formatTime(createdAt)}</span>
+          </div>
+          <p className="text-xs text-foreground font-medium leading-snug">{gd.result}</p>
+          {gd.pandaComment && (
+            <div className="mt-2 flex items-start gap-1.5 bg-background/50 rounded-xl p-2">
+              <span className="text-sm flex-shrink-0">🐼</span>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">{gd.pandaComment}</p>
+            </div>
+          )}
+          {gd.matched && (
+            <div className="mt-1.5 text-center">
+              <span className="text-[10px] font-bold text-primary">Perfect match! 🎉</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const bubbleStyle = isMine && bubbleColor
     ? { backgroundColor: bubbleColor, color: "#fff" }
     : undefined;

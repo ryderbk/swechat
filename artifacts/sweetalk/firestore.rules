@@ -36,6 +36,45 @@ service cloud.firestore {
       allow read, write: if isAllowed();
     }
 
+    // AI Memory (Panda chat memory)
+    match /aiMemory/{docId} {
+      allow read, write: if isAllowed();
+    }
+
+    // User Preferences (mute, theme, etc.)
+    match /userPreferences/{uid} {
+      allow read, write: if isAllowed();
+    }
+
+    // Pinned Messages
+    match /pinnedMessages/{docId} {
+      allow read, write: if isAllowed();
+    }
+
+    // Starred / calls
+    match /calls/{callId} {
+      allow read, write: if isAllowed();
+    }
+
+    // Games system
+    match /games/{gameType}/rounds/{roundId} {
+      allow read, write: if isAllowed();
+    }
+    match /games/{gameType}/days/{dayId} {
+      allow read, write: if isAllowed();
+    }
+    match /games/{gameType}/entries/{entryId} {
+      allow read, write: if isAllowed();
+    }
+    match /games/{gameType}/rooms/{roomId} {
+      allow read, write: if isAllowed();
+    }
+
+    // Panda Memory (evolving AI context for games)
+    match /pandaMemory/{docId} {
+      allow read, write: if isAllowed();
+    }
+
     // Fallback
     match /{document=**} {
       allow read, write: if false;
