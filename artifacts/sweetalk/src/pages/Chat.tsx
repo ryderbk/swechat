@@ -16,8 +16,8 @@ import {
   PinnedMessage,
   unpinMessage,
   UserPresence,
-  subscribeToSharedNote,
   updateSharedNote,
+  subscribeToAIMemory,
 } from "@/lib/firestore";
 import { uploadImage, uploadVideo, uploadDocument } from "@/lib/storage";
 import { drawBadge, clearBadge } from "@/lib/faviconBadge";
@@ -30,6 +30,7 @@ import { CallManager } from "@/components/CallManager";
 import { ChatSettings } from "@/components/ChatSettings";
 import { generatePandaReply } from "@/lib/panda_ai";
 import GamePanel from "@/components/games/GamePanel";
+import { subscribePandaMemory } from "@/lib/gameFirestore";
 import { GameData } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -326,6 +327,19 @@ export default function Chat() {
     const unsub2 = subscribeToPresence(partnerUid, setPartnerPresence);
     return () => { unsub(); unsub2(); };
   }, [user, partnerUid]);
+
+  // Sync Game Panel visibility with shared activeGameId
+  useEffect(() => {
+    const unsub = subscribePandaMemory((mem) => {
+      if (mem.activeGameId) {
+        setGamePanelOpen(true);
+        setSidebarOpen(false);
+      } else {
+        setGamePanelOpen(false);
+      }
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     const unsub = subscribeToPinnedMessages(setPinnedMessages);

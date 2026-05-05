@@ -22,6 +22,8 @@ export interface PandaGameMemory {
   totalPoints: { player1: number; player2: number };
   matchRates: Record<string, number>;
   lastUpdated?: string;
+  activeGameId?: string | null;
+  activeGameDocId?: string | null;
 }
 
 export const EMPTY_MEMORY: PandaGameMemory = {
@@ -30,6 +32,8 @@ export const EMPTY_MEMORY: PandaGameMemory = {
   streaks: {},
   totalPoints: { player1: 0, player2: 0 },
   matchRates: {},
+  activeGameId: null,
+  activeGameDocId: null,
 };
 
 async function callGroq(

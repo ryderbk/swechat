@@ -3,21 +3,16 @@ import { X, Trophy, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GameData } from "@/lib/firestore";
 import type { PandaGameMemory } from "@/lib/panda";
-import { getPandaMemory, subscribePandaMemory } from "@/lib/gameFirestore";
+import { getPandaMemory, subscribePandaMemory, updatePandaMemory } from "@/lib/gameFirestore";
 
 import { ThisOrThat } from "./ThisOrThat";
-import { AnswerReveal } from "./AnswerReveal";
 import { GuessMyAnswer } from "./GuessMyAnswer";
-import { SecretUnlock } from "./SecretUnlock";
 import { OneQuestionADay } from "./OneQuestionADay";
 import { MemoryQuiz } from "./MemoryQuiz";
 import { TruthOrDare } from "./TruthOrDare";
 import { CompleteSentence } from "./CompleteSentence";
-import { RapidFire } from "./RapidFire";
 import { RandomQuestion } from "./RandomQuestion";
-import { Scoreboard } from "./Scoreboard";
 import { MoodSync } from "./MoodSync";
-import { BuildOurWorld } from "./BuildOurWorld";
 import { AskPanda } from "./AskPanda";
 
 interface GamePanelProps {
@@ -39,35 +34,25 @@ interface GameMeta {
 
 const GAMES: GameMeta[] = [
   { id: "thisorthat",       name: "This or That",         emoji: "🎲", desc: "Pick your side",           color: "from-rose-400/20 to-pink-300/20" },
-  { id: "answerreveal",     name: "Answer & Reveal",      emoji: "💬", desc: "Compare answers",          color: "from-purple-400/20 to-violet-300/20" },
   { id: "guessmyanswer",    name: "Guess My Answer",      emoji: "🔍", desc: "How well do you know me?", color: "from-blue-400/20 to-cyan-300/20" },
-  { id: "secretunlock",     name: "Secret Unlock",        emoji: "🔓", desc: "Crack my secret",          color: "from-amber-400/20 to-yellow-300/20" },
   { id: "dailyquestion",    name: "Daily Question",       emoji: "📅", desc: "One question per day",     color: "from-emerald-400/20 to-green-300/20" },
   { id: "memoryquiz",       name: "Memory Quiz",          emoji: "🧠", desc: "Test your memory",         color: "from-orange-400/20 to-red-300/20" },
   { id: "truthordare",      name: "Truth or Dare",        emoji: "🎭", desc: "Bold or honest?",          color: "from-pink-400/20 to-rose-300/20" },
   { id: "completesentence", name: "Complete the Sentence",emoji: "✍️", desc: "Finish the thought",       color: "from-indigo-400/20 to-blue-300/20" },
-  { id: "rapidfire",        name: "Rapid Fire",           emoji: "⚡", desc: "No time to think",         color: "from-yellow-400/20 to-amber-300/20" },
   { id: "randomquestion",   name: "Random Question",      emoji: "❓", desc: "Panda picks the topic",    color: "from-teal-400/20 to-emerald-300/20" },
-  { id: "scoreboard",       name: "Scoreboard",           emoji: "📊", desc: "Our game stats",           color: "from-slate-400/20 to-gray-300/20" },
   { id: "moodsync",         name: "Mood Sync",            emoji: "😊", desc: "How are you feeling?",    color: "from-fuchsia-400/20 to-pink-300/20" },
-  { id: "buildourworld",    name: "Build Our World",      emoji: "🌍", desc: "Unlock your story",        color: "from-lime-400/20 to-green-300/20" },
   { id: "askpanda",         name: "Ask Panda",            emoji: "🐼", desc: "AI advice for couples",    color: "from-primary/20 to-primary/10" },
 ];
 
 const GAME_MAP: Record<string, React.ComponentType<GameComponentProps>> = {
   thisorthat: ThisOrThat,
-  answerreveal: AnswerReveal,
   guessmyanswer: GuessMyAnswer,
-  secretunlock: SecretUnlock,
   dailyquestion: OneQuestionADay,
   memoryquiz: MemoryQuiz,
   truthordare: TruthOrDare,
   completesentence: CompleteSentence,
-  rapidfire: RapidFire,
   randomquestion: RandomQuestion,
-  scoreboard: Scoreboard,
   moodsync: MoodSync,
-  buildourworld: BuildOurWorld,
   askpanda: AskPanda,
 };
 
@@ -82,8 +67,11 @@ export interface GameComponentProps {
 }
 
 export default function GamePanel({ uid, partnerUid, partnerName, myName, onSendToChat, onClose }: GamePanelProps) {
-  const [activeGameId, setActiveGameId] = useState<string | null>(null);
-  const [memory, setMemory] = useState<PandaGameMemory>({ gameHistory: [], knownFacts: [], streaks: {}, totalPoints: { player1: 0, player2: 0 }, matchRates: {} });
+  const [memory, setMemory] = useState<PandaGameMemory>({ 
+    gameHistory: [], knownFacts: [], streaks: {}, 
+    totalPoints: { player1: 0, player2: 0 }, matchRates: {},
+    activeGameId: null, activeGameDocId: null 
+  });
 
   useEffect(() => {
     getPandaMemory().then(setMemory);
@@ -91,11 +79,20 @@ export default function GamePanel({ uid, partnerUid, partnerName, myName, onSend
     return unsub;
   }, []);
 
+  const activeGameId = memory.activeGameId;
   const activeGame = GAMES.find((g) => g.id === activeGameId);
   const ActiveComponent = activeGameId ? GAME_MAP[activeGameId] : null;
 
+  const handleSelectGame = (gameId: string) => {
+    updatePandaMemory({ activeGameId: gameId, activeGameDocId: null });
+  };
+
+  const handleCloseGame = () => {
+    updatePandaMemory({ activeGameId: null, activeGameDocId: null });
+  };
+
   const handleComplete = (result: string) => {
-    setActiveGameId(null);
+    handleCloseGame();
   };
 
   const p1 = memory.totalPoints?.player1 ?? 0;
@@ -109,7 +106,7 @@ export default function GamePanel({ uid, partnerUid, partnerName, myName, onSend
             variant="ghost"
             size="icon"
             className="rounded-xl h-8 w-8 text-muted-foreground"
-            onClick={() => setActiveGameId(null)}
+            onClick={handleCloseGame}
           >
             ←
           </Button>
@@ -175,7 +172,7 @@ export default function GamePanel({ uid, partnerUid, partnerName, myName, onSend
           {GAMES.map((g) => (
             <button
               key={g.id}
-              onClick={() => setActiveGameId(g.id)}
+              onClick={() => handleSelectGame(g.id)}
               className={`bg-gradient-to-br ${g.color} border border-border/50 rounded-2xl p-3 text-left hover:scale-[1.03] active:scale-[0.97] transition-transform flex flex-col gap-1 min-h-[80px]`}
             >
               <span className="text-2xl">{g.emoji}</span>

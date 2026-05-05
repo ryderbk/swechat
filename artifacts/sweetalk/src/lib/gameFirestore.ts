@@ -125,26 +125,3 @@ export function subscribeMoodDoc(key: string, callback: (data: Record<string, un
     callback(snap.exists() ? snap.data() as Record<string, unknown> : null);
   });
 }
-
-// ─── Our World ──────────────────────────────────────────────────────────────
-export async function getOurWorld(): Promise<{ unlockedItems: string[]; totalRounds: number }> {
-  const snap = await getDoc(doc(db, "games", "ourworld", "rooms", ROOM));
-  return snap.exists() ? snap.data() as { unlockedItems: string[]; totalRounds: number } : { unlockedItems: [], totalRounds: 0 };
-}
-
-export async function incrementRoundsPlayed() {
-  const current = await getOurWorld();
-  await setDoc(doc(db, "games", "ourworld", "rooms", ROOM), { totalRounds: (current.totalRounds || 0) + 1 }, { merge: true });
-}
-
-export async function unlockWorldItem(item: string) {
-  const current = await getOurWorld();
-  const items = [...new Set([...(current.unlockedItems || []), item])];
-  await setDoc(doc(db, "games", "ourworld", "rooms", ROOM), { unlockedItems: items }, { merge: true });
-}
-
-export function subscribeOurWorld(callback: (data: { unlockedItems: string[]; totalRounds: number }) => void) {
-  return onSnapshot(doc(db, "games", "ourworld", "rooms", ROOM), (snap) => {
-    if (snap.exists()) callback(snap.data() as { unlockedItems: string[]; totalRounds: number });
-  });
-}
