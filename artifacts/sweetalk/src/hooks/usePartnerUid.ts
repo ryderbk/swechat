@@ -18,8 +18,8 @@ export function usePartnerUid() {
         if (data.displayName) {
           let name = data.displayName;
           const lowName = name.toLowerCase();
-          if (lowName.includes("sbharathkumar") || lowName.includes("mr. kumarr")) name = "Bharath Kumar";
-          else if (lowName.includes("saiswetha") || lowName.includes("mrs. kumarr")) name = "Saiswetha";
+          if (/sbharathkumar|mr\.?\s*kumarr*/i.test(lowName)) name = "Bharath Kumar";
+          else if (/saiswetha|mrs\.?\s*kumarr*/i.test(lowName)) name = "Saiswetha";
           setPartnerName(name);
         }
       }

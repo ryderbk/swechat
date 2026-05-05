@@ -122,14 +122,8 @@ export function MessageBubble({
     lastTapRef.current = now;
   };
 
-  const handleDoubleTap = async () => {
-    const existing = message.reactions?.["❤️"] ?? [];
-    const hasReacted = existing.includes(myUid);
-    if (!hasReacted) {
-      await reactToMessage(message.id, "❤️", myUid, false);
-    }
-    setShowFloatHeart(true);
-    setTimeout(() => setShowFloatHeart(false), 800);
+  const handleDoubleTap = () => {
+    onReply?.(message);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {

@@ -241,6 +241,7 @@ export default function Chat() {
   const [bubbleColor, setBubbleColor] = useState(() => localStorage.getItem("sweetalk_bubble_color") ?? "");
   const [bubbleShape, setBubbleShape] = useState(() => localStorage.getItem("sweetalk_bubble_shape") ?? "rounded");
   const [fontSize, setFontSize] = useState(() => localStorage.getItem("sweetalk_font_size") ?? "15px");
+  const [atMenuOpen, setAtMenuOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -359,6 +360,15 @@ export default function Chat() {
   const handleTyping = (val: string) => {
     setText(val);
     if (!user) return;
+
+    // Show @ menu if last char is @ or if we are typing after @
+    const lastWord = val.split(" ").pop() || "";
+    if (lastWord.startsWith("@")) {
+      setAtMenuOpen(true);
+    } else {
+      setAtMenuOpen(false);
+    }
+
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     setTypingStatus(user.uid, true);
     typingTimerRef.current = setTimeout(() => {
@@ -369,8 +379,12 @@ export default function Chat() {
   const handleSend = async () => {
     if (!text.trim() || !user) return;
     const msg = text.trim();
+    const isPandaTrigger = msg.toLowerCase().includes("@panda") || replyingTo?.isAI;
+    const currentReply = replyingTo; // Capture it before clearing
+
     setText("");
     setReplyingTo(null);
+    setAtMenuOpen(false);
     setTypingStatus(user.uid, false);
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
 
@@ -388,13 +402,13 @@ export default function Chat() {
     await sendMessage(user.uid, {
       text: msg,
       type: "text",
-      replyTo: replyingTo
-        ? { id: replyingTo.id, text: replyingTo.text ?? "[media]", senderId: replyingTo.senderId }
+      replyTo: currentReply
+        ? { id: currentReply.id, text: currentReply.text ?? "[media]", senderId: currentReply.senderId }
         : null,
       linkPreview,
     });
 
-    if (msg.toLowerCase().includes("@panda")) {
+    if (isPandaTrigger) {
       // Clean input: Remove "@panda" and trim
       const cleanMsg = msg.replace(/@panda/gi, "").trim();
       
@@ -407,8 +421,8 @@ export default function Chat() {
       setTimeout(async () => {
         try {
           const cleanUserDisplayName = (user.displayName || "User")
-            .replace(/sbharathkumar1125|Mr\. Kumarr/gi, "Bharath Kumar")
-            .replace(/saiswetharr|Mrs\. Kumarr/gi, "Saiswetha");
+            .replace(/sbharathkumar1125|Mr\.?\s*Kumarr*/gi, "Bharath Kumar")
+            .replace(/saiswetharr|Mrs\.?\s*Kumarr*/gi, "Saiswetha");
 
           await generatePandaReply(
             user.uid,
@@ -416,7 +430,7 @@ export default function Chat() {
             partnerName,
             messages.slice(-50), // Last 50 messages for context
             cleanMsg,
-            replyingTo ? { id: replyingTo.id, text: replyingTo.text ?? "[media]", senderId: replyingTo.senderId } : null
+            currentReply ? { id: currentReply.id, text: currentReply.text ?? "[media]", senderId: currentReply.senderId } : null
           );
         } finally {
           setPandaTyping(false);
@@ -880,6 +894,30 @@ export default function Chat() {
               </div>
               <button onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* @ autocomplete menu */}
+          {atMenuOpen && (
+            <div className="flex-shrink-0 bg-card/95 backdrop-blur border-t border-border px-2 py-2 animate-in slide-in-from-bottom-2">
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-primary/10 transition-colors group"
+                onClick={() => {
+                  const words = text.split(" ");
+                  words[words.length - 1] = "@panda ";
+                  setText(words.join(" "));
+                  setAtMenuOpen(false);
+                  inputRef.current?.focus();
+                }}
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="text-sm">🐼</span>
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-semibold text-foreground">@panda</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">AI Assistant</span>
+                </div>
               </button>
             </div>
           )}
