@@ -84,11 +84,16 @@ export default function GamePanel({ uid, partnerUid, partnerName, myName, onSend
   const ActiveComponent = activeGameId ? GAME_MAP[activeGameId] : null;
 
   const handleSelectGame = (gameId: string) => {
-    updatePandaMemory({ activeGameId: gameId, activeGameDocId: null });
+    updatePandaMemory({ activeGameId: gameId, activeGameDocId: null })
+      .catch(err => {
+        console.error("Failed to start game:", err);
+        alert("Game sync failed! Please check your Firestore rules.");
+      });
   };
 
   const handleCloseGame = () => {
-    updatePandaMemory({ activeGameId: null, activeGameDocId: null });
+    updatePandaMemory({ activeGameId: null, activeGameDocId: null })
+      .catch(console.error);
   };
 
   const handleComplete = (result: string) => {
