@@ -948,9 +948,9 @@ export default function Chat() {
 
           {/* @ autocomplete menu */}
           {atMenuOpen && (
-            <div className="flex-shrink-0 bg-card/95 backdrop-blur border-t border-border px-2 py-2 animate-in slide-in-from-bottom-2">
+            <div className="flex-shrink-0 bg-card/80 backdrop-blur-md border-t border-border/50 px-3 py-3 animate-in slide-in-from-bottom-3 fade-in duration-300">
               <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-primary/10 transition-colors group"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 hover:border-primary/40 transition-all group shadow-sm active:scale-[0.98]"
                 onClick={() => {
                   const words = text.split(" ");
                   words[words.length - 1] = "@panda ";
@@ -959,12 +959,18 @@ export default function Chat() {
                   inputRef.current?.focus();
                 }}
               >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-sm">🐼</span>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                  <span className="text-xl">🐼</span>
                 </div>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-semibold text-foreground">@panda</span>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">AI Assistant</span>
+                <div className="flex flex-col items-start gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-foreground">@panda</span>
+                    <span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full uppercase font-black tracking-tighter">AI Assistant</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-medium">Ask me anything or tag for a quick response</span>
+                </div>
+                <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ChevronUp className="w-4 h-4 text-primary animate-bounce-subtle" />
                 </div>
               </button>
             </div>

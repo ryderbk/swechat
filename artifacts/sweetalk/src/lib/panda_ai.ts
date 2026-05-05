@@ -54,7 +54,14 @@ RELATIONSHIP CONTEXT:
 - Important Moments: ${(memory?.importantMoments || []).map(m => m.replace(/Mr\. Kumarr|Mrs\. Kumarr/gi, (match) => match.includes("Mrs") ? "Saiswetha" : "Bharath Kumar")).join(", ") || "Many shared smiles and memories."}
 
 RECENT CHAT HISTORY:
-${recentMessages.map(m => `${m.senderId === userId ? userDisplayName : (m.isAI ? 'Panda' : partnerDisplayName)}: ${m.text}`).join('\n')}
+${recentMessages.map(m => {
+  const sender = m.senderId === userId ? userDisplayName : (m.isAI ? 'Panda' : partnerDisplayName);
+  let content = m.text;
+  if (m.type === "game" && m.gameData) {
+    content = `[Game: ${m.gameData.gameName}] Result: ${m.gameData.result}. Panda's Comment: ${m.gameData.pandaComment}`;
+  }
+  return `${sender}: ${content}`;
+}).join('\n')}
 
 You are currently responding to ${userDisplayName}. Use their name naturally.`;
 
@@ -106,7 +113,13 @@ You are currently responding to ${userDisplayName}. Use their name naturally.`;
  */
 async function maybeUpdateMemory(messages: Message[], currentMemory: AIMemory | null) {
   try {
-    const historyText = messages.map(m => `${m.senderId}: ${m.text}`).join('\n');
+    const historyText = messages.map(m => {
+      let content = m.text;
+      if (m.type === "game" && m.gameData) {
+        content = `[Game: ${m.gameData.gameName}] Result: ${m.gameData.result}`;
+      }
+      return `${m.senderId}: ${content}`;
+    }).join('\n');
     
     const updatePrompt = `Update the AI memory for the relationship between Bharath Kumar and Saiswetha based on the last 50 messages.
 Update memory without repeating old info. Keep it concise and meaningful.
