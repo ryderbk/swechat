@@ -31,8 +31,29 @@ service cloud.firestore {
       allow create: if isAllowed();
     }
 
-    // Shared Note
+    // Shared Note & AI Memory
     match /sharedNote/{docId} {
+      allow read, write: if isAllowed();
+    }
+    match /aiMemory/{docId} {
+      allow read, write: if isAllowed();
+    }
+
+    // Pinned Messages
+    match /pinnedMessages/{messageId} {
+      allow read, write: if isAllowed();
+    }
+
+    // User Preferences & Tokens
+    match /userPreferences/{uid} {
+      allow read, write: if isAllowed() && request.auth.uid == uid;
+    }
+    match /users/{uid}/tokens/{tokenId} {
+      allow read, write: if isAllowed() && request.auth.uid == uid;
+    }
+
+    // Calls
+    match /calls/{callId} {
       allow read, write: if isAllowed();
     }
 
