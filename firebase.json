@@ -4,7 +4,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "artifacts/sweetalk/dist/public",
+    "public": "artifacts/sweetalk/dist",
     "ignore": [
       "firebase.json",
       "**/.*",
