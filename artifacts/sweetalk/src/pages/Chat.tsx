@@ -701,21 +701,45 @@ export default function Chat() {
               </div>
             )}
 
-            {messages.map((msg) => (
-              <div key={msg.id} className="relative">
-                <MessageBubble
-                  message={msg}
-                  isMine={msg.senderId === user?.uid}
-                  myUid={user?.uid ?? ""}
-                  searchTerm={searchOpen ? searchTerm : undefined}
-                  onReply={setReplyingTo}
-                  onJumpTo={handleJumpTo}
-                  bubbleColor={bubbleColor}
-                  bubbleShape={bubbleShape}
-                  fontSize={fontSize}
-                />
-              </div>
-            ))}
+            {messages.map((msg, idx) => {
+              const prev = messages[idx - 1];
+              const next = messages[idx + 1];
+              
+              const isMine = msg.senderId === user?.uid;
+              const isSameAsPrev = prev && prev.senderId === msg.senderId;
+              const isSameAsNext = next && next.senderId === msg.senderId;
+              
+              const timeDiffPrev = prev 
+                ? (msg.createdAt?.toDate?.().getTime() ?? 0) - (prev.createdAt?.toDate?.().getTime() ?? 0)
+                : Infinity;
+              const timeDiffNext = next
+                ? (next.createdAt?.toDate?.().getTime() ?? 0) - (msg.createdAt?.toDate?.().getTime() ?? 0)
+                : Infinity;
+
+              // Show time if:
+              // 1. First message
+              // 2. Different sender from next
+              // 3. Gap > 1 min to next
+              const showTime = !isSameAsNext || timeDiffNext > 60000;
+
+              return (
+                <div key={msg.id} className="relative">
+                  <MessageBubble
+                    message={msg}
+                    isMine={isMine}
+                    myUid={user?.uid ?? ""}
+                    searchTerm={searchOpen ? searchTerm : undefined}
+                    onReply={setReplyingTo}
+                    onJumpTo={handleJumpTo}
+                    bubbleColor={bubbleColor}
+                    bubbleShape={bubbleShape}
+                    fontSize={fontSize}
+                    showTime={showTime}
+                    isGrouped={isSameAsNext}
+                  />
+                </div>
+              );
+            })}
 
             {partnerTyping && <TypingIndicator partnerName={partnerName} />}
             <div ref={bottomRef} />

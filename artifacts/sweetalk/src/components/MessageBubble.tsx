@@ -92,7 +92,9 @@ export function MessageBubble({
   bubbleColor,
   bubbleShape = "rounded",
   fontSize = "15px",
-}: Props) {
+  showTime = true,
+  isGrouped = false,
+}: Props & { showTime?: boolean; isGrouped?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.text ?? "");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -204,7 +206,7 @@ export function MessageBubble({
     <div
       data-message-id={message.id}
       data-testid={`message-${message.id}`}
-      className={`flex ${isMine ? "justify-end" : "justify-start"} px-4 mb-2 group`}
+      className={`flex ${isMine ? "justify-end" : "justify-start"} px-4 ${isGrouped ? "mb-0.5" : "mb-2"} group animate-in fade-in slide-in-from-bottom-1 duration-300`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -212,7 +214,7 @@ export function MessageBubble({
       onMouseUp={handleLongPressEnd}
       onClick={handleTap}
     >
-      <div className={`max-w-[75%] relative ${isMine ? "items-end" : "items-start"} flex flex-col`}>
+      <div className={`max-w-[85%] relative ${isMine ? "items-end" : "items-start"} flex flex-col`}>
         {/* Reply preview */}
         {message.replyTo && (
           <button
@@ -471,10 +473,12 @@ export function MessageBubble({
         )}
 
         {/* Timestamp + status */}
-        <div className={`flex items-center gap-1 mt-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
-          <span className="text-[10px] text-muted-foreground">{formatTime(createdAt)}</span>
-          {isMine && <StatusIcon status={message.status} />}
-        </div>
+        {showTime && (
+          <div className={`flex items-center gap-1 mt-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
+            <span className="text-[10px] text-muted-foreground">{formatTime(createdAt)}</span>
+            {isMine && <StatusIcon status={message.status} />}
+          </div>
+        )}
       </div>
     </div>
   );
