@@ -338,6 +338,15 @@ export async function getUserPreferences(uid: string): Promise<Record<string, un
   return snap.exists() ? (snap.data() as Record<string, unknown>) : {};
 }
 
+export async function clearAllMessages(): Promise<void> {
+  const snap = await getDocs(collection(db, "messages"));
+  const chunks: Promise<void>[] = [];
+  snap.docs.forEach((d) => {
+    chunks.push(deleteDoc(doc(db, "messages", d.id)));
+  });
+  await Promise.all(chunks);
+}
+
 export function subscribeToCallForCallee(
   calleeId: string,
   callback: (callId: string, data: CallDoc) => void

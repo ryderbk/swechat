@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
-import { saveUserPreference, getUserPreferences, muteNotifications, getMuteStatus } from "@/lib/firestore";
+import { saveUserPreference, getUserPreferences, muteNotifications, getMuteStatus, clearAllMessages } from "@/lib/firestore";
 import { ThemeSelector } from "./ThemeSelector";
 import { WallpaperSelector } from "./WallpaperSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { X, Bell, BellOff } from "lucide-react";
+import { X, Bell, BellOff, Trash2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -54,6 +54,7 @@ export function ChatSettings({
   const [readReceipts, setReadReceipts] = useState(true);
   const [lastSeen, setLastSeen] = useState(true);
   const [mutedUntil, setMutedUntil] = useState<Date | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (!user || !open) return;
@@ -207,6 +208,29 @@ export function ChatSettings({
                 onCheckedChange={(v) => { setLastSeen(v); save({ lastSeen: v }); }}
               />
             </div>
+          </section>
+
+          {/* Clear chat */}
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Danger Zone</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-xl gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+              disabled={clearing}
+              onClick={async () => {
+                if (!confirm("Delete all messages? This cannot be undone.")) return;
+                setClearing(true);
+                try {
+                  await clearAllMessages();
+                } finally {
+                  setClearing(false);
+                }
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {clearing ? "Clearing…" : "Clear all messages"}
+            </Button>
           </section>
         </div>
       </div>

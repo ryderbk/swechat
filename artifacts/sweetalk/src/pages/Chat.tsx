@@ -57,10 +57,6 @@ import {
   Settings,
   Pin,
   Reply,
-  Bold,
-  Italic,
-  Strikethrough,
-  Code,
 } from "lucide-react";
 import { formatDistanceToNow, differenceInDays } from "date-fns";
 
@@ -200,8 +196,6 @@ export default function Chat() {
   const [bubbleColor, setBubbleColor] = useState(() => localStorage.getItem("sweetalk_bubble_color") ?? "");
   const [bubbleShape, setBubbleShape] = useState(() => localStorage.getItem("sweetalk_bubble_shape") ?? "rounded");
   const [fontSize, setFontSize] = useState(() => localStorage.getItem("sweetalk_font_size") ?? "15px");
-
-  const [showFormatToolbar, setShowFormatToolbar] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -434,25 +428,6 @@ export default function Chat() {
   const handleJumpTo = (id: string) => {
     const el = document.querySelector(`[data-message-id="${id}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
-  const handleWrapFormat = (marker: string) => {
-    const input = inputRef.current;
-    if (!input) return;
-    const start = input.selectionStart ?? 0;
-    const end = input.selectionEnd ?? 0;
-    const selected = text.slice(start, end);
-    if (selected) {
-      const newText = text.slice(0, start) + marker + selected + marker + text.slice(end);
-      setText(newText);
-    } else {
-      const newText = text + marker + marker;
-      setText(newText);
-      setTimeout(() => {
-        input.setSelectionRange(newText.length - marker.length, newText.length - marker.length);
-        input.focus();
-      }, 0);
-    }
   };
 
   const handleWallpaperChange = (v: string) => {
@@ -795,40 +770,6 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Formatting toolbar */}
-          {showFormatToolbar && (
-            <div className="flex-shrink-0 bg-card/80 border-t border-border px-3 py-1.5 flex items-center gap-1">
-              <button
-                onClick={() => handleWrapFormat("*")}
-                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
-                title="Bold"
-              >
-                <Bold className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleWrapFormat("_")}
-                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
-                title="Italic"
-              >
-                <Italic className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleWrapFormat("~")}
-                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
-                title="Strikethrough"
-              >
-                <Strikethrough className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleWrapFormat("`")}
-                className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center"
-                title="Monospace"
-              >
-                <Code className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
           {/* Input */}
           <div className="flex-shrink-0 bg-card/80 backdrop-blur border-t border-border px-3 py-3">
             <div className="flex items-end gap-2">
@@ -900,8 +841,6 @@ export default function Chat() {
                   data-testid="input-message"
                   value={text}
                   onChange={(e) => handleTyping(e.target.value)}
-                  onFocus={() => setShowFormatToolbar(true)}
-                  onBlur={() => setTimeout(() => setShowFormatToolbar(false), 200)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
                   }}
