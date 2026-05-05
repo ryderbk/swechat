@@ -813,7 +813,7 @@ export default function Chat() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] font-medium text-primary uppercase tracking-wider">Panda</span>
-                  <TypingIndicator />
+                  <TypingIndicator hideLabel />
                 </div>
               </div>
             )}

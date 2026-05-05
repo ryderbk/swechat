@@ -1,12 +1,13 @@
 interface Props {
-  partnerName: string;
+  partnerName?: string;
+  hideLabel?: boolean;
 }
 
-export function TypingIndicator({ partnerName }: Props) {
+export function TypingIndicator({ partnerName, hideLabel }: Props) {
   return (
-    <div className="flex justify-start px-4 mb-2">
-      <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-2.5 flex items-center gap-2 shadow-sm">
-        <span className="text-xs text-muted-foreground">{partnerName} is typing</span>
+    <div className={`flex justify-start ${hideLabel ? "" : "px-4 mb-2"}`}>
+      <div className={`${hideLabel ? "" : "bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm"} flex items-center gap-2`}>
+        {!hideLabel && partnerName && <span className="text-xs text-muted-foreground">{partnerName} is typing</span>}
         <div className="flex gap-0.5">
           {[0, 1, 2].map((i) => (
             <span
