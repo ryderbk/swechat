@@ -1,61 +1,67 @@
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-async function uploadToCloudinary(file: File | Blob, resourceType: "image" | "video" | "raw" | "auto" = "auto"): Promise<string> {
+async function uploadToCloudinary(
+  file: File | Blob, 
+  resourceType: "image" | "video" | "raw" | "auto" = "auto",
+  onProgress?: (progress: number) => void
+): Promise<string> {
   if (!CLOUD_NAME || !UPLOAD_PRESET) {
     throw new Error("Cloudinary configuration is missing. Please check your .env file.");
   }
 
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", UPLOAD_PRESET);
-  
-  console.log(`Starting Cloudinary ${resourceType} upload...`);
-  
-  try {
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || "Upload failed");
+    xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`);
+
+    if (onProgress && xhr.upload) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          onProgress(percent);
+        }
+      };
     }
 
-    const data = await response.json();
-    console.log("Upload successful:", data.secure_url);
-    return data.secure_url;
-  } catch (error: any) {
-    console.error("Cloudinary upload error:", error);
-    throw error;
-  }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = JSON.parse(xhr.responseText);
+        resolve(data.secure_url);
+      } else {
+        const error = JSON.parse(xhr.responseText);
+        reject(new Error(error.error?.message || "Upload failed"));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.send(formData);
+  });
 }
 
-export async function uploadImage(file: File): Promise<string> {
-  return uploadToCloudinary(file, "image");
+export async function uploadImage(file: File, onProgress?: (p: number) => void): Promise<string> {
+  return uploadToCloudinary(file, "image", onProgress);
 }
 
-export async function uploadVideo(file: File): Promise<string> {
-  return uploadToCloudinary(file, "video");
+export async function uploadVideo(file: File, onProgress?: (p: number) => void): Promise<string> {
+  return uploadToCloudinary(file, "video", onProgress);
 }
 
-export async function uploadAudio(blob: Blob): Promise<string> {
-  // Cloudinary treats audio as video for the purpose of the API resource type
-  return uploadToCloudinary(blob, "video");
+export async function uploadAudio(blob: Blob, onProgress?: (p: number) => void): Promise<string> {
+  return uploadToCloudinary(blob, "video", onProgress);
 }
 
-export async function uploadVoice(blob: Blob): Promise<string> {
-  return uploadToCloudinary(blob, "video");
+export async function uploadVoice(blob: Blob, onProgress?: (p: number) => void): Promise<string> {
+  return uploadToCloudinary(blob, "video", onProgress);
 }
 
-export async function uploadFile(file: File): Promise<string> {
-  return uploadToCloudinary(file, "auto");
+export async function uploadFile(file: File, onProgress?: (p: number) => void): Promise<string> {
+  return uploadToCloudinary(file, "auto", onProgress);
 }
 
-export async function uploadDocument(file: File): Promise<string> {
-  return uploadToCloudinary(file, "auto");
+export async function uploadDocument(file: File, onProgress?: (p: number) => void): Promise<string> {
+  return uploadToCloudinary(file, "auto", onProgress);
 }

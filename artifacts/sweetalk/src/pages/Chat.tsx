@@ -16,13 +16,14 @@ import {
   PinnedMessage,
   unpinMessage,
   UserPresence,
+  subscribeToSharedNote,
+  updateSharedNote,
 } from "@/lib/firestore";
 import { uploadImage, uploadVideo, uploadDocument } from "@/lib/storage";
 import { drawBadge, clearBadge } from "@/lib/faviconBadge";
 import { queueMessage, getQueuedMessages, removeQueuedMessage } from "@/lib/offlineQueue";
 import { MessageBubble } from "@/components/MessageBubble";
 import { TypingIndicator } from "@/components/TypingIndicator";
-import { SharedNote } from "@/components/SharedNote";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { CallManager } from "@/components/CallManager";
@@ -112,46 +113,89 @@ function Sidebar({
 }) {
   const [, setLocation] = useLocation();
   const daysTogether = differenceInDays(new Date(), ANNIVERSARY_DATE);
+  const [content, setContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeToSharedNote((note) => {
+      if (note) setContent(note.content);
+    });
+    return unsub;
+  }, []);
+
+  const handleNoteChange = (val: string) => {
+    setContent(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setSaving(true);
+      await updateSharedNote(val);
+      setSaving(false);
+    }, 800);
+  };
 
   return (
     <div className="flex flex-col gap-3 p-4 h-full">
-      <div className="bg-card border border-border rounded-2xl p-4">
+      {/* Days Counter */}
+      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
           <CalendarDays className="w-4 h-4 text-primary" />
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             Together
           </span>
         </div>
-        <p className="text-3xl font-bold text-foreground">{daysTogether}</p>
+        <p className="text-3xl font-bold text-foreground leading-none mb-1">{daysTogether}</p>
         <p className="text-sm text-muted-foreground">days and counting</p>
-        <p className="text-xs text-muted-foreground mt-1">Since July 7, 2025</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1 uppercase tracking-tight">Since July 7, 2025</p>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <MessageCircleHeart className="w-4 h-4 text-primary" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Conversation Starter
-          </span>
+      {/* Shared Corner (Prompt + Note) */}
+      <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 shadow-sm space-y-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <MessageCircleHeart className="w-4 h-4 text-primary" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Daily Spark
+            </span>
+          </div>
+          <p className="text-sm text-foreground italic leading-relaxed mb-3">
+            "{prompt}"
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full rounded-xl text-[11px] h-8 border border-primary/20 hover:bg-primary/10 transition-colors"
+            onClick={onNewPrompt}
+          >
+            <Heart className="w-3 h-3 mr-1.5 fill-primary/20" />
+            New Spark
+          </Button>
         </div>
-        <p className="text-sm text-foreground italic leading-relaxed mb-3">
-          "{prompt}"
-        </p>
-        <Button
-          data-testid="button-new-prompt"
-          variant="outline"
-          size="sm"
-          className="w-full rounded-xl text-xs"
-          onClick={onNewPrompt}
-        >
-          <Heart className="w-3.5 h-3.5 mr-1.5" />
-          New prompt
-        </Button>
+
+        <div className="pt-4 border-t border-primary/10">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Our Little Note
+              </span>
+            </div>
+            {saving && <span className="text-[10px] text-primary animate-pulse font-medium">SAVING...</span>}
+          </div>
+          <textarea
+            value={content}
+            onChange={(e) => handleNoteChange(e.target.value)}
+            placeholder="Write something just for the two of you…"
+            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 resize-none outline-none leading-relaxed min-h-[80px]"
+          />
+        </div>
       </div>
+
+      <div className="flex-1" />
 
       <Button
         variant="outline"
-        className="w-full rounded-xl gap-2"
+        className="w-full rounded-xl gap-2 h-11 border-border/60 hover:bg-muted"
         onClick={() => setLocation("/media")}
       >
         <Paperclip className="w-4 h-4" />
@@ -352,7 +396,7 @@ export default function Chat() {
     setUploading(true);
     setUploadProgress(0);
     try {
-      const url = await uploadImage(file);
+      const url = await uploadImage(file, setUploadProgress);
       await sendMessage(user.uid, { type: "image", imageUrl: url });
       setTimeout(() => scrollToBottom(true), 50);
     } finally {
@@ -618,8 +662,6 @@ export default function Chat() {
       <div className="flex flex-1 overflow-hidden">
         {/* Main chat column */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Shared note */}
-          <SharedNote />
 
           {/* Pinned messages */}
           {pinnedMessages.length > 0 && (
