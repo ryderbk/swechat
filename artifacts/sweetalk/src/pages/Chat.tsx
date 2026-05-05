@@ -60,7 +60,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, differenceInDays } from "date-fns";
 
-const ANNIVERSARY_DATE = new Date("2024-06-01");
+const ANNIVERSARY_DATE = new Date("2025-07-07");
 
 const SWEET_PROMPTS = [
   "If I could describe you in three words, they'd be...",
@@ -124,7 +124,7 @@ function Sidebar({
         </div>
         <p className="text-3xl font-bold text-foreground">{daysTogether}</p>
         <p className="text-sm text-muted-foreground">days and counting</p>
-        <p className="text-xs text-muted-foreground mt-1">Since June 1, 2024</p>
+        <p className="text-xs text-muted-foreground mt-1">Since July 7, 2025</p>
       </div>
 
       <div className="bg-card border border-border rounded-2xl p-4">

@@ -1,72 +1,44 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAuth() {
+    function isAllowed() {
       return request.auth != null;
     }
 
-    // ── Messages ──────────────────────────────────────────────
-    match /messages/{msgId} {
-      allow read: if isAuth();
-      allow create: if isAuth()
-        && request.resource.data.senderId == request.auth.uid;
-      allow update: if isAuth()
-        && (resource.data.senderId == request.auth.uid
-            || request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status', 'reactions', 'starred']));
-      allow delete: if isAuth()
-        && resource.data.senderId == request.auth.uid;
+    // Messages: allow read/write for authenticated users
+    match /messages/{messageId} {
+      allow read: if isAllowed();
+      allow create: if isAllowed();
+      allow update: if isAllowed();
+      allow delete: if isAllowed() && resource.data.senderId == request.auth.uid;
     }
 
-    // ── Shared Note ───────────────────────────────────────────
+    // Presence & Typing: Essential for the real-time indicators
+    match /userPresence/{uid} {
+      allow read: if isAllowed();
+      allow write: if isAllowed() && request.auth.uid == uid;
+    }
+
+    match /typingStatus/{uid} {
+      allow read: if isAllowed();
+      allow write: if isAllowed() && request.auth.uid == uid;
+    }
+
+    // Login Activity: This was likely the culprit!
+    match /loginActivity/{logId} {
+      allow read: if isAllowed();
+      allow create: if isAllowed();
+    }
+
+    // Shared Note
     match /sharedNote/{docId} {
-      allow read, write: if isAuth();
+      allow read, write: if isAllowed();
     }
 
-    // ── Typing indicators ─────────────────────────────────────
-    match /typing/{uid} {
-      allow read: if isAuth();
-      allow write: if isAuth() && request.auth.uid == uid;
-    }
-
-    // ── Presence ──────────────────────────────────────────────
-    match /presence/{uid} {
-      allow read: if isAuth();
-      allow write: if isAuth() && request.auth.uid == uid;
-    }
-
-    // ── Pinned Messages ───────────────────────────────────────
-    match /pinnedMessages/{pinId} {
-      allow read: if isAuth();
-      allow write: if isAuth();
-    }
-
-    // ── Calls (WebRTC signaling) ───────────────────────────────
-    match /calls/{callId} {
-      allow read, write: if isAuth();
-    }
-
-    // ── User Preferences ──────────────────────────────────────
-    match /userPreferences/{uid} {
-      allow read, write: if isAuth() && request.auth.uid == uid;
-    }
-
-    // ── FCM Tokens ────────────────────────────────────────────
-    match /fcmTokens/{uid} {
-      allow read: if isAuth();
-      allow write: if isAuth() && request.auth.uid == uid;
-    }
-
-    // ── App Config (e.g. mute settings) ───────────────────────
-    match /appConfig/{docId} {
-      allow read, write: if isAuth();
-    }
-
-    // ── Starred Messages ──────────────────────────────────────
-    match /starredMessages/{docId} {
-      allow read, write: if isAuth();
+    // Fallback
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

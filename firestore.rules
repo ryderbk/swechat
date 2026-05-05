@@ -6,22 +6,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Messages: allow read/write for authenticated users
     match /messages/{messageId} {
       allow read: if isAllowed();
-      allow create: if isAllowed()
-        && request.resource.data.senderId == request.auth.uid
-        && request.resource.data.keys().hasAll(['senderId', 'createdAt', 'type']);
-      allow update: if isAllowed()
-        && (
-          resource.data.senderId == request.auth.uid
-          || request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status', 'reactions', 'starred'])
-        );
+      allow create: if isAllowed();
+      allow update: if isAllowed();
       allow delete: if isAllowed() && resource.data.senderId == request.auth.uid;
     }
 
-    match /sharedNote/{docId} {
-      allow read, write: if isAllowed();
+    // Presence & Typing: Essential for the real-time indicators
+    match /userPresence/{uid} {
+      allow read: if isAllowed();
+      allow write: if isAllowed() && request.auth.uid == uid;
     }
 
     match /typingStatus/{uid} {
@@ -29,41 +25,18 @@ service cloud.firestore {
       allow write: if isAllowed() && request.auth.uid == uid;
     }
 
-    match /userPresence/{uid} {
+    // Login Activity: This was likely the culprit!
+    match /loginActivity/{logId} {
       allow read: if isAllowed();
-      allow write: if isAllowed() && request.auth.uid == uid;
+      allow create: if isAllowed();
     }
 
-    match /pinnedMessages/{docId} {
+    // Shared Note
+    match /sharedNote/{docId} {
       allow read, write: if isAllowed();
     }
 
-    match /calls/{callId} {
-      allow read, write: if isAllowed();
-    }
-
-    match /calls/{callId}/callerCandidates/{candidateId} {
-      allow read, write: if isAllowed();
-    }
-
-    match /calls/{callId}/calleeCandidates/{candidateId} {
-      allow read, write: if isAllowed();
-    }
-
-    match /userPreferences/{uid} {
-      allow read: if isAllowed();
-      allow write: if isAllowed() && request.auth.uid == uid;
-    }
-
-    match /users/{uid}/tokens/{tokenId} {
-      allow read, write: if isAllowed() && request.auth.uid == uid;
-    }
-
-    match /appConfig/{docId} {
-      allow read: if isAllowed();
-      allow write: if false;
-    }
-
+    // Fallback
     match /{document=**} {
       allow read, write: if false;
     }
