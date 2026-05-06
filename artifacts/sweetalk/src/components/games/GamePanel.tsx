@@ -5,15 +5,7 @@ import type { GameData } from "@/lib/firestore";
 import type { PandaGameMemory } from "@/lib/panda";
 import { getPandaMemory, subscribePandaMemory, updatePandaMemory } from "@/lib/gameFirestore";
 
-import { ThisOrThat } from "./ThisOrThat";
-import { GuessMyAnswer } from "./GuessMyAnswer";
-import { OneQuestionADay } from "./OneQuestionADay";
-import { MemoryQuiz } from "./MemoryQuiz";
 import { TruthOrDare } from "./TruthOrDare";
-import { CompleteSentence } from "./CompleteSentence";
-import { RandomQuestion } from "./RandomQuestion";
-import { MoodSync } from "./MoodSync";
-import { AskPanda } from "./AskPanda";
 
 interface GamePanelProps {
   uid: string;
@@ -33,27 +25,11 @@ interface GameMeta {
 }
 
 const GAMES: GameMeta[] = [
-  { id: "thisorthat",       name: "This or That",         emoji: "🎲", desc: "Pick your side",           color: "from-rose-400/20 to-pink-300/20" },
-  { id: "guessmyanswer",    name: "Guess My Answer",      emoji: "🔍", desc: "How well do you know me?", color: "from-blue-400/20 to-cyan-300/20" },
-  { id: "dailyquestion",    name: "Daily Question",       emoji: "📅", desc: "One question per day",     color: "from-emerald-400/20 to-green-300/20" },
-  { id: "memoryquiz",       name: "Memory Quiz",          emoji: "🧠", desc: "Test your memory",         color: "from-orange-400/20 to-red-300/20" },
   { id: "truthordare",      name: "Truth or Dare",        emoji: "🎭", desc: "Bold or honest?",          color: "from-pink-400/20 to-rose-300/20" },
-  { id: "completesentence", name: "Complete the Sentence",emoji: "✍️", desc: "Finish the thought",       color: "from-indigo-400/20 to-blue-300/20" },
-  { id: "randomquestion",   name: "Random Question",      emoji: "❓", desc: "Panda picks the topic",    color: "from-teal-400/20 to-emerald-300/20" },
-  { id: "moodsync",         name: "Mood Sync",            emoji: "😊", desc: "How are you feeling?",    color: "from-fuchsia-400/20 to-pink-300/20" },
-  { id: "askpanda",         name: "Ask Panda",            emoji: "🐼", desc: "AI advice for couples",    color: "from-primary/20 to-primary/10" },
 ];
 
 const GAME_MAP: Record<string, React.ComponentType<GameComponentProps>> = {
-  thisorthat: ThisOrThat,
-  guessmyanswer: GuessMyAnswer,
-  dailyquestion: OneQuestionADay,
-  memoryquiz: MemoryQuiz,
   truthordare: TruthOrDare,
-  completesentence: CompleteSentence,
-  randomquestion: RandomQuestion,
-  moodsync: MoodSync,
-  askpanda: AskPanda,
 };
 
 export interface GameComponentProps {
@@ -173,16 +149,18 @@ export default function GamePanel({ uid, partnerUid, partnerName, myName, onSend
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           {GAMES.map((g) => (
             <button
               key={g.id}
               onClick={() => handleSelectGame(g.id)}
-              className={`bg-gradient-to-br ${g.color} border border-border/50 rounded-2xl p-3 text-left hover:scale-[1.03] active:scale-[0.97] transition-transform flex flex-col gap-1 min-h-[80px]`}
+              className={`bg-gradient-to-br ${g.color} border border-border/50 rounded-2xl p-4 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center gap-4 min-h-[100px]`}
             >
-              <span className="text-2xl">{g.emoji}</span>
-              <span className="text-xs font-bold text-foreground leading-tight">{g.name}</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">{g.desc}</span>
+              <span className="text-4xl">{g.emoji}</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-bold text-foreground leading-tight">{g.name}</span>
+                <span className="text-xs text-muted-foreground leading-tight">{g.desc}</span>
+              </div>
             </button>
           ))}
         </div>
