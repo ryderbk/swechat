@@ -341,8 +341,6 @@ export default function Chat() {
       if (mem.activeGameId) {
         setGamePanelOpen(true);
         setSidebarOpen(false);
-      } else {
-        setGamePanelOpen(false);
       }
     });
     return unsub;
