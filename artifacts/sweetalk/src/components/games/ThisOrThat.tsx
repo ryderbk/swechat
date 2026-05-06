@@ -5,7 +5,23 @@ import { generateQuestion, generateReveal } from "@/lib/panda";
 import { subscribeLatestGame, addGameDoc, setGameDoc, addGameHistory, addPoints } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
-type Phase = "loading" | "picking" | "waiting" | "revealed";
+type Phase = "loading" | "picking" | "waiting" | "waiting_for_round" | "revealed";
+
+function WaitingForRound({ partnerName }: { partnerName: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-4">
+      <div className="flex gap-1">
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+      </div>
+      <p className="text-sm font-medium text-foreground text-center">
+        Waiting for {partnerName} to start a round…
+      </p>
+      <p className="text-xs text-muted-foreground">Both of you need to have the game open 💕</p>
+    </div>
+  );
+}
 
 export function ThisOrThat({ uid, partnerUid, partnerName, myName, memory, onSendToChat, onComplete }: GameComponentProps) {
   const [phase, setPhase] = useState<Phase>("loading");
@@ -31,21 +47,23 @@ export function ThisOrThat({ uid, partnerUid, partnerName, myName, memory, onSen
     setShowConfetti(false);
     try {
       const res = await generateQuestion("This or That", memory);
-      setQuestion(res.question);
-      setOptions(res.options ?? ["Option A 🌅", "Option B 🌙"]);
       const id = await addGameDoc("thisorthat", {
         question: res.question,
-        options: res.options ?? [],
+        options: res.options ?? ["Morning cuddle 🌅", "Goodnight message 🌙"],
         pick1: null,
         pick2: null,
         status: "picking",
       });
       setDocId(id);
-      setPhase("picking");
     } catch {
-      setOptions(["Morning cuddle 🌅", "Goodnight message 🌙"]);
-      setQuestion("Morning cuddle or goodnight message?");
-      setPhase("picking");
+      const id = await addGameDoc("thisorthat", {
+        question: "Morning cuddle or goodnight message?",
+        options: ["Morning cuddle 🌅", "Goodnight message 🌙"],
+        pick1: null,
+        pick2: null,
+        status: "picking",
+      });
+      setDocId(id);
     } finally {
       setGenerating(false);
     }
@@ -53,12 +71,21 @@ export function ThisOrThat({ uid, partnerUid, partnerName, myName, memory, onSen
 
   useEffect(() => {
     const unsub = subscribeLatestGame("thisorthat", (data) => {
-      if (!data) { startNewRound(); return; }
+      if (!data) {
+        if (isPlayer1) {
+          startNewRound();
+        } else {
+          setPhase("waiting_for_round");
+          setQuestion("Waiting for partner to start a round…");
+        }
+        return;
+      }
+
       const status = data.status as string;
       const q = data.question as string;
       const opts = (data.options as string[]) ?? [];
-      const p1 = (data.pick1 as string | null);
-      const p2 = (data.pick2 as string | null);
+      const p1 = data.pick1 as string | null;
+      const p2 = data.pick2 as string | null;
       const id = data.id as string;
 
       setDocId(id);
@@ -91,7 +118,7 @@ export function ThisOrThat({ uid, partnerUid, partnerName, myName, memory, onSen
   };
 
   useEffect(() => {
-    if (myPick && partnerPick && docId && phase === "waiting") {
+    if (myPick && partnerPick && docId && phase === "waiting" && isPlayer1) {
       revealAnswers();
     }
   }, [myPick, partnerPick, phase]);
@@ -99,15 +126,10 @@ export function ThisOrThat({ uid, partnerUid, partnerName, myName, memory, onSen
   const revealAnswers = async () => {
     if (!docId) return;
     const comment = await generateReveal(question, myPick!, partnerPick!, myName, partnerName);
-    setPandaComment(comment);
+    const matched = myPick === partnerPick;
     await setGameDoc("thisorthat", docId, { status: "revealed", pandaComment: comment });
     await addGameHistory("thisorthat", `Q: ${question} — ${myName}: ${myPick}, ${partnerName}: ${partnerPick}`);
-    const matched = myPick === partnerPick;
-    if (matched) {
-      await addPoints(isPlayer1 ? "player1" : "player2", 10);
-    }
-    setShowConfetti(matched);
-    setPhase("revealed");
+    if (matched) await addPoints(isPlayer1 ? "player1" : "player2", 10);
     onSendToChat({
       gameType: "thisorthat",
       gameName: "This or That",
@@ -119,6 +141,7 @@ export function ThisOrThat({ uid, partnerUid, partnerName, myName, memory, onSen
   };
 
   if (phase === "loading" || generating) return <PandaThinking label="Panda is choosing a question…" />;
+  if (phase === "waiting_for_round") return <WaitingForRound partnerName={partnerName} />;
 
   return (
     <div className="flex flex-col gap-4 relative">
@@ -173,9 +196,13 @@ export function ThisOrThat({ uid, partnerUid, partnerName, myName, memory, onSen
 
           {pandaComment && <PandaBubble text={pandaComment} />}
 
-          <Button onClick={startNewRound} className="w-full rounded-2xl">
-            Next Question 🎲
-          </Button>
+          {isPlayer1 ? (
+            <Button onClick={startNewRound} className="w-full rounded-2xl">Next Question 🎲</Button>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-xs text-muted-foreground">Waiting for {partnerName} to start the next round…</p>
+            </div>
+          )}
         </div>
       )}
     </div>

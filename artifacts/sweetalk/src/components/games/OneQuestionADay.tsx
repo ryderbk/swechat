@@ -6,8 +6,10 @@ import { generateQuestion, generateReveal } from "@/lib/panda";
 import { subscribeDailyDoc, setDailyDoc, todayKey, addGameHistory } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
+type Phase = "loading" | "waiting_for_question" | "answering" | "waiting" | "revealed";
+
 export function OneQuestionADay({ uid, partnerUid, partnerName, myName, memory, onSendToChat, onComplete }: GameComponentProps) {
-  const [phase, setPhase] = useState<"loading" | "answering" | "waiting" | "revealed">("loading");
+  const [phase, setPhase] = useState<Phase>("loading");
   const [question, setQuestion] = useState("");
   const [myAnswer, setMyAnswer] = useState("");
   const [draftAnswer, setDraftAnswer] = useState("");
@@ -18,20 +20,32 @@ export function OneQuestionADay({ uid, partnerUid, partnerName, myName, memory, 
 
   const isPlayer1 = !partnerUid || uid < (partnerUid ?? "z");
   const myField = isPlayer1 ? "answer1" : "answer2";
-  const partnerField = isPlayer1 ? "answer2" : "answer1";
 
   useEffect(() => {
     const unsub = subscribeDailyDoc(dateKey, async (data) => {
       if (!data) {
-        setPhase("loading");
         if (isPlayer1) {
+          setPhase("loading");
           try {
             const res = await generateQuestion("One Question a Day", memory);
-            await setDailyDoc(dateKey, { question: res.question, answer1: null, answer2: null, status: "open" });
-            setQuestion(res.question);
-          } catch { setQuestion("What's one thing you're grateful for about us today?"); }
+            await setDailyDoc(dateKey, {
+              question: res.question,
+              answer1: null,
+              answer2: null,
+              status: "open",
+            });
+          } catch {
+            await setDailyDoc(dateKey, {
+              question: "What's one thing you're grateful for about us today?",
+              answer1: null,
+              answer2: null,
+              status: "open",
+            });
+          }
+        } else {
+          setPhase("waiting_for_question");
+          setQuestion("Panda is preparing today's question…");
         }
-        setPhase("answering");
         return;
       }
 
@@ -39,10 +53,10 @@ export function OneQuestionADay({ uid, partnerUid, partnerName, myName, memory, 
       const status = data.status as string;
       const mine = isPlayer1 ? data.answer1 : data.answer2;
       const theirs = isPlayer1 ? data.answer2 : data.answer1;
-      const streak = data.streak as number ?? 0;
+      const s = (data.streak as number) ?? 0;
 
       setQuestion(q);
-      setStreak(streak);
+      setStreak(s);
       if (mine) setMyAnswer(mine as string);
       if (theirs) setPartnerAnswer(theirs as string);
 
@@ -66,17 +80,15 @@ export function OneQuestionADay({ uid, partnerUid, partnerName, myName, memory, 
   };
 
   useEffect(() => {
-    if (myAnswer && partnerAnswer && phase === "waiting") {
+    if (myAnswer && partnerAnswer && phase === "waiting" && isPlayer1) {
       doReveal();
     }
   }, [myAnswer, partnerAnswer, phase]);
 
   const doReveal = async () => {
     const comment = await generateReveal(question, myAnswer, partnerAnswer!, myName, partnerName);
-    setPandaComment(comment);
     await setDailyDoc(dateKey, { status: "revealed", pandaComment: comment, streak: streak + 1 });
     await addGameHistory("dailyquestion", `${dateKey}: ${question}`);
-    setPhase("revealed");
     onSendToChat({
       gameType: "dailyquestion",
       gameName: "Daily Question",
@@ -88,11 +100,27 @@ export function OneQuestionADay({ uid, partnerUid, partnerName, myName, memory, 
 
   if (phase === "loading") return <PandaThinking label="Panda is preparing today's question…" />;
 
+  if (phase === "waiting_for_question") {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <div className="flex gap-1">
+          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+          <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+        </div>
+        <p className="text-sm font-medium text-foreground text-center">Panda is preparing today's question…</p>
+        <p className="text-xs text-muted-foreground">Open the game on {partnerName}'s device too 💕</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-card border border-border rounded-2xl p-4 text-center">
         <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Daily Question 📅</p>
-        <p className="text-[10px] text-muted-foreground mb-3">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+        <p className="text-[10px] text-muted-foreground mb-3">
+          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        </p>
         <p className="text-base font-semibold text-foreground leading-snug">{question}</p>
         {streak > 0 && (
           <div className="flex items-center justify-center gap-1 mt-2">

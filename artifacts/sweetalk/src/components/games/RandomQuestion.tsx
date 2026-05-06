@@ -1,17 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PandaBubble, PandaThinking } from "./PandaAvatar";
 import { generateQuestion, askPanda } from "@/lib/panda";
-import { addGameHistory } from "@/lib/gameFirestore";
+import { subscribeLatestGame, addGameDoc, setGameDoc, addGameHistory } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
 const CATEGORIES = [
-  { id: "dreams", emoji: "🌟", label: "Dreams & Future" },
-  { id: "memories", emoji: "📸", label: "Memories" },
-  { id: "love", emoji: "💕", label: "Love & Affection" },
-  { id: "fun", emoji: "🎉", label: "Fun & Silly" },
-  { id: "deep", emoji: "🌊", label: "Deep & Meaningful" },
-  { id: "surprise", emoji: "🎲", label: "Panda's Choice" },
+  { id: "dreams",    emoji: "🌟", label: "Dreams & Future" },
+  { id: "memories",  emoji: "📸", label: "Memories" },
+  { id: "love",      emoji: "💕", label: "Love & Affection" },
+  { id: "fun",       emoji: "🎉", label: "Fun & Silly" },
+  { id: "deep",      emoji: "🌊", label: "Deep & Meaningful" },
+  { id: "surprise",  emoji: "🎲", label: "Panda's Choice" },
 ];
 
 export function RandomQuestion({ uid, partnerUid, partnerName, myName, memory, onSendToChat, onComplete }: GameComponentProps) {
@@ -21,6 +21,30 @@ export function RandomQuestion({ uid, partnerUid, partnerName, myName, memory, o
   const [category, setCategory] = useState("");
   const [answered, setAnswered] = useState(false);
   const [pandaComment, setPandaComment] = useState("");
+  const [docId, setDocId] = useState<string | null>(null);
+  const [askedBy, setAskedBy] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeLatestGame("randomquestion", (data) => {
+      if (!data) return;
+      const status = data.status as string;
+      setDocId(data.id as string);
+      setQuestion(data.question as string ?? "");
+      setHint((data.hint as string) ?? "");
+      setCategory((data.category as string) ?? "");
+      setAskedBy(data.askedBy as string);
+      if (status === "active") {
+        setAnswered(false);
+        setPandaComment("");
+        setPhase("question");
+      } else if (status === "answered") {
+        setAnswered(true);
+        setPandaComment((data.pandaComment as string) ?? "");
+        setPhase("question");
+      }
+    });
+    return unsub;
+  }, []);
 
   const pickQuestion = async (cat: typeof CATEGORIES[0]) => {
     setCategory(cat.label);
@@ -29,23 +53,44 @@ export function RandomQuestion({ uid, partnerUid, partnerName, myName, memory, o
     setPandaComment("");
     try {
       const res = await generateQuestion("Random Question", memory, cat.label);
-      setQuestion(res.question);
-      setHint(res.hint ?? "");
-      setPhase("question");
+      const id = await addGameDoc("randomquestion", {
+        question: res.question,
+        hint: res.hint ?? "",
+        category: cat.label,
+        status: "active",
+        answered: false,
+        pandaComment: "",
+        askedBy: uid,
+      });
+      setDocId(id);
     } catch {
-      setQuestion("What is the most meaningful gift your partner has given you (not necessarily material)?");
-      setHint("Think beyond physical gifts 💕");
-      setPhase("question");
+      const fallback = "What is the most meaningful moment in your relationship so far?";
+      const id = await addGameDoc("randomquestion", {
+        question: fallback,
+        hint: "Think about what brought you closer 💕",
+        category: cat.label,
+        status: "active",
+        answered: false,
+        pandaComment: "",
+        askedBy: uid,
+      });
+      setDocId(id);
     }
   };
 
   const markAnswered = async () => {
+    if (!docId) return;
     setAnswered(true);
     const comment = await askPanda(
       `${myName} and ${partnerName} just discussed: "${question}". Give a warm, thoughtful 1-sentence closing remark. Max 15 words.`,
       memory
     );
     setPandaComment(comment);
+    await setGameDoc("randomquestion", docId, {
+      answered: true,
+      status: "answered",
+      pandaComment: comment,
+    });
     await addGameHistory("randomquestion", question);
     onSendToChat({
       gameType: "randomquestion",
@@ -86,6 +131,9 @@ export function RandomQuestion({ uid, partnerUid, partnerName, myName, memory, o
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2 justify-center">
         <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{category}</span>
+        {askedBy && askedBy !== uid && (
+          <span className="text-xs text-muted-foreground">from {partnerName.split(" ")[0]}</span>
+        )}
       </div>
 
       <div className="bg-card border-2 border-primary/20 rounded-2xl p-5 text-center">
@@ -107,7 +155,10 @@ export function RandomQuestion({ uid, partnerUid, partnerName, myName, memory, o
       )}
 
       {!answered && (
-        <button onClick={() => pickQuestion(CATEGORIES.find((c) => c.label === category) ?? CATEGORIES[5])} className="text-xs text-muted-foreground text-center hover:text-primary transition-colors">
+        <button
+          onClick={() => pickQuestion(CATEGORIES.find((c) => c.label === category) ?? CATEGORIES[5])}
+          className="text-xs text-muted-foreground text-center hover:text-primary transition-colors"
+        >
           Skip this one →
         </button>
       )}

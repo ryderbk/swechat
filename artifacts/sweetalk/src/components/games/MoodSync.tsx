@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { PandaBubble, PandaThinking } from "./PandaAvatar";
+import { PandaBubble } from "./PandaAvatar";
 import { generateMoodSuggestion } from "@/lib/panda";
 import { subscribeMoodDoc, setMoodField, hourKey, addGameHistory } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
 const MOODS = [
-  { emoji: "😊", label: "Happy", color: "from-yellow-400/20 to-yellow-300/10" },
-  { emoji: "🥰", label: "Loved", color: "from-pink-400/20 to-rose-300/10" },
-  { emoji: "😴", label: "Sleepy", color: "from-indigo-400/20 to-blue-300/10" },
-  { emoji: "😤", label: "Stressed", color: "from-red-400/20 to-orange-300/10" },
-  { emoji: "🥺", label: "Emotional", color: "from-purple-400/20 to-violet-300/10" },
-  { emoji: "🤩", label: "Excited", color: "from-amber-400/20 to-yellow-300/10" },
-  { emoji: "😌", label: "Peaceful", color: "from-green-400/20 to-emerald-300/10" },
+  { emoji: "😊", label: "Happy",       color: "from-yellow-400/20 to-yellow-300/10" },
+  { emoji: "🥰", label: "Loved",       color: "from-pink-400/20 to-rose-300/10" },
+  { emoji: "😴", label: "Sleepy",      color: "from-indigo-400/20 to-blue-300/10" },
+  { emoji: "😤", label: "Stressed",    color: "from-red-400/20 to-orange-300/10" },
+  { emoji: "🥺", label: "Emotional",   color: "from-purple-400/20 to-violet-300/10" },
+  { emoji: "🤩", label: "Excited",     color: "from-amber-400/20 to-yellow-300/10" },
+  { emoji: "😌", label: "Peaceful",    color: "from-green-400/20 to-emerald-300/10" },
   { emoji: "🥳", label: "Celebratory", color: "from-fuchsia-400/20 to-pink-300/10" },
 ];
 
@@ -20,34 +20,45 @@ export function MoodSync({ uid, partnerUid, partnerName, myName, memory, onSendT
   const [phase, setPhase] = useState<"picking" | "waiting" | "revealed">("picking");
   const [myMood, setMyMood] = useState<string | null>(null);
   const [partnerMood, setPartnerMood] = useState<string | null>(null);
-  const [pandaComment, setPandaComment] = useState("");
-  const [currentKey] = useState(hourKey());
   const [suggestion, setSuggestion] = useState("");
+  const [currentKey] = useState(hourKey());
+  const revealedRef = useRef(false);
 
   const isPlayer1 = !partnerUid || uid < (partnerUid ?? "z");
   const myField = isPlayer1 ? "mood1" : "mood2";
   const partnerField = isPlayer1 ? "mood2" : "mood1";
 
   useEffect(() => {
-    const unsub = subscribeMoodDoc(currentKey, async (data) => {
+    const unsub = subscribeMoodDoc(currentKey, (data) => {
       if (!data) { setPhase("picking"); return; }
+
       const mine = data[myField] as string | null;
       const theirs = data[partnerField] as string | null;
+      const storedSuggestion = data["suggestion"] as string | null;
+
       if (mine) setMyMood(mine);
       if (theirs) setPartnerMood(theirs);
-      if (mine && theirs && phase !== "revealed") {
-        const sugg = await generateMoodSuggestion(mine, theirs);
-        setSuggestion(sugg);
-        await addGameHistory("moodsync", `${myName}: ${mine}, ${partnerName}: ${theirs}`);
+      if (storedSuggestion) setSuggestion(storedSuggestion);
+
+      if (mine && theirs && !revealedRef.current) {
+        revealedRef.current = true;
         setPhase("revealed");
-        onSendToChat({
-          gameType: "moodsync",
-          gameName: "Mood Sync",
-          emoji: "😊",
-          result: `${myName}: ${mine} · ${partnerName}: ${theirs}`,
-          pandaComment: sugg,
-          matched: mine === theirs,
-        });
+
+        if (isPlayer1 && !storedSuggestion) {
+          generateMoodSuggestion(mine, theirs).then(async (sugg) => {
+            setSuggestion(sugg);
+            await setMoodField(currentKey, "suggestion", sugg);
+            await addGameHistory("moodsync", `${myName}: ${mine}, ${partnerName}: ${theirs}`);
+            onSendToChat({
+              gameType: "moodsync",
+              gameName: "Mood Sync",
+              emoji: "😊",
+              result: `${myName}: ${mine} · ${partnerName}: ${theirs}`,
+              pandaComment: sugg,
+              matched: mine === theirs,
+            });
+          }).catch(console.error);
+        }
       } else if (mine) {
         setPhase("waiting");
       }
@@ -61,10 +72,10 @@ export function MoodSync({ uid, partnerUid, partnerName, myName, memory, onSendT
     setPhase("waiting");
   };
 
-  const reset = async () => {
+  const reset = () => {
+    revealedRef.current = false;
     setMyMood(null);
     setPartnerMood(null);
-    setPandaComment("");
     setSuggestion("");
     setPhase("picking");
   };

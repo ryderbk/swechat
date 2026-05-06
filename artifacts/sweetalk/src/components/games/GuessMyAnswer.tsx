@@ -6,8 +6,10 @@ import { generateQuestion, evaluateAnswer, generateReveal } from "@/lib/panda";
 import { subscribeGameDoc, addGameDoc, setGameDoc, addGameHistory, addPoints, updatePandaMemory } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
+type Phase = "loading" | "waiting_for_start" | "answering" | "guessing" | "waiting_for_partner" | "revealed";
+
 export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, onSendToChat, onComplete }: GameComponentProps) {
-  const [phase, setPhase] = useState<"loading" | "waiting_for_start" | "answering" | "guessing" | "waiting_for_partner" | "revealed">("loading");
+  const [phase, setPhase] = useState<Phase>("loading");
   const [question, setQuestion] = useState("");
   const [myAnswer, setMyAnswer] = useState("");
   const [partnerAnswer, setPartnerAnswer] = useState<string | null>(null);
@@ -24,25 +26,27 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
       return;
     }
 
+    setMyAnswer("");
+    setPartnerAnswer(null);
+    setPandaComment("");
+    setScore(0);
+    setRole(null);
+
     const unsub = subscribeGameDoc("guessmyanswer", docId, (data) => {
       if (!data) return;
 
       setQuestion(data.question as string);
       const initiatorId = data.initiatorId as string;
-      
-      // The person who started the game is the GUESSER
-      // The other person is the ANSWERER
       const isInitiator = uid === initiatorId;
       const myRole = isInitiator ? "guesser" : "answerer";
       setRole(myRole);
 
-      const answererId = isInitiator ? partnerUid : uid;
       const answer = data.answer as string | null;
       const guess = data.guess as string | null;
 
       if (data.status === "revealed") {
-        setScore(data.score as number || 0);
-        setPandaComment(data.pandaComment as string || "");
+        setScore((data.score as number) || 0);
+        setPandaComment((data.pandaComment as string) || "");
         setMyAnswer(isInitiator ? (guess || "") : (answer || ""));
         setPartnerAnswer(isInitiator ? (answer || "") : (guess || ""));
         setPhase("revealed");
@@ -64,6 +68,11 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
 
   const startNewRound = async () => {
     setPhase("loading");
+    setMyAnswer("");
+    setPartnerAnswer(null);
+    setPandaComment("");
+    setScore(0);
+    setRole(null);
     try {
       const res = await generateQuestion("Guess My Answer", memory);
       const id = await addGameDoc("guessmyanswer", {
@@ -89,11 +98,10 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
     if (!myAnswer.trim() || !docId) return;
     setIsRevealing(true);
     try {
-      // Get the real answer from the doc first to be sure
-      const docData = await new Promise<any>((resolve) => {
+      const docData = await new Promise<Record<string, unknown>>((resolve) => {
         const u = subscribeGameDoc("guessmyanswer", docId, (data) => {
           u();
-          resolve(data);
+          resolve(data ?? {});
         });
       });
 
@@ -102,7 +110,6 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
 
       const result = await evaluateAnswer(question, realAns, myGuess);
       const revealComment = await generateReveal(question, realAns, myGuess, partnerName, myName);
-
       const finalComment = `${revealComment} ${result.pandaComment}`;
 
       await setGameDoc("guessmyanswer", docId, {
@@ -112,8 +119,11 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
         status: "revealed",
       });
 
-      await addGameHistory("guessmyanswer", `Q: ${question} | Answerer (${partnerName}): ${realAns} | Guesser (${myName}): ${myGuess} | Score: ${result.score}`);
-      
+      await addGameHistory(
+        "guessmyanswer",
+        `Q: ${question} | Answerer (${partnerName}): ${realAns} | Guesser (${myName}): ${myGuess} | Score: ${result.score}`
+      );
+
       if (result.score > 70) {
         await addPoints("player1", 10);
         await addPoints("player2", 10);
@@ -134,7 +144,8 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
     }
   };
 
-  if (phase === "loading" || isRevealing) return <PandaThinking label={isRevealing ? "Panda is checking..." : "Panda is fetching a question..."} />;
+  if (phase === "loading" || isRevealing)
+    return <PandaThinking label={isRevealing ? "Panda is checking…" : "Panda is fetching a question…"} />;
 
   if (phase === "waiting_for_start") {
     return (
@@ -162,16 +173,14 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
 
       {phase === "answering" && (
         <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4">
-          <div className="space-y-2">
-            <p className="text-xs text-center text-muted-foreground">Answer this secretly — {partnerName} will try to guess it!</p>
-            <Input
-              value={myAnswer}
-              onChange={(e) => setMyAnswer(e.target.value)}
-              placeholder="Your secret answer..."
-              className="rounded-2xl h-12 px-4 border-2"
-              autoFocus
-            />
-          </div>
+          <p className="text-xs text-center text-muted-foreground">Answer this secretly — {partnerName} will try to guess it!</p>
+          <Input
+            value={myAnswer}
+            onChange={(e) => setMyAnswer(e.target.value)}
+            placeholder="Your secret answer..."
+            className="rounded-2xl h-12 px-4 border-2"
+            autoFocus
+          />
           <Button onClick={submitAnswer} disabled={!myAnswer.trim()} className="rounded-2xl h-12 font-bold">
             Set Answer 🔒
           </Button>
@@ -180,16 +189,14 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
 
       {phase === "guessing" && (
         <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4">
-          <div className="space-y-2">
-            <p className="text-xs text-center text-muted-foreground">What do you think {partnerName} answered?</p>
-            <Input
-              value={myAnswer}
-              onChange={(e) => setMyAnswer(e.target.value)}
-              placeholder="Take a guess..."
-              className="rounded-2xl h-12 px-4 border-2 border-primary/30"
-              autoFocus
-            />
-          </div>
+          <p className="text-xs text-center text-muted-foreground">What do you think {partnerName} answered?</p>
+          <Input
+            value={myAnswer}
+            onChange={(e) => setMyAnswer(e.target.value)}
+            placeholder="Take a guess..."
+            className="rounded-2xl h-12 px-4 border-2 border-primary/30"
+            autoFocus
+          />
           <Button onClick={submitGuess} disabled={!myAnswer.trim()} className="rounded-2xl h-12 font-bold shadow-md shadow-primary/10">
             Submit Guess 🎯
           </Button>
@@ -199,12 +206,12 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
       {phase === "waiting_for_partner" && (
         <div className="text-center py-10 bg-primary/5 rounded-2xl border border-primary/10">
           <div className="flex justify-center gap-1 mb-4">
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce"></span>
+            <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
           </div>
           <p className="text-sm font-medium text-primary">
-            {role === "guesser" ? `Waiting for ${partnerName} to answer...` : `Waiting for ${partnerName} to guess...`}
+            {role === "guesser" ? `Waiting for ${partnerName} to answer…` : `Waiting for ${partnerName} to guess…`}
           </p>
         </div>
       )}
@@ -216,27 +223,27 @@ export function GuessMyAnswer({ uid, partnerUid, partnerName, myName, memory, on
               <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">
                 {role === "answerer" ? "Your Answer" : `${partnerName}'s Answer`}
               </p>
-              <p className="text-sm font-medium text-foreground">{role === "answerer" ? myAnswer : partnerAnswer}</p>
+              <p className="text-sm font-medium text-foreground">
+                {role === "answerer" ? myAnswer : partnerAnswer}
+              </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">
                 {role === "guesser" ? "Your Guess" : `${partnerName}'s Guess`}
               </p>
-              <p className="text-sm font-medium text-foreground">{role === "guesser" ? myAnswer : partnerAnswer}</p>
+              <p className="text-sm font-medium text-foreground">
+                {role === "guesser" ? myAnswer : partnerAnswer}
+              </p>
             </div>
           </div>
-          
+
           <div className="rounded-2xl border-2 border-primary/20 bg-primary/5 p-5 text-center">
             <p className="text-[10px] text-primary font-bold uppercase tracking-[0.2em] mb-1">Match Score</p>
             <p className="text-4xl font-black text-primary">{score}%</p>
           </div>
 
-          {pandaComment && (
-            <div className="mt-2">
-              <PandaBubble text={pandaComment} />
-            </div>
-          )}
-          
+          {pandaComment && <div className="mt-2"><PandaBubble text={pandaComment} /></div>}
+
           <Button onClick={startNewRound} variant="outline" className="w-full rounded-2xl h-12 font-bold border-2 mt-2">
             Play Again 🔍
           </Button>

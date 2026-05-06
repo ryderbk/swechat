@@ -6,8 +6,26 @@ import { askPanda, generateReveal } from "@/lib/panda";
 import { subscribeLatestGame, addGameDoc, setGameDoc, addGameHistory } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
+type Phase = "loading" | "completing" | "waiting" | "waiting_for_round" | "revealed";
+
+function WaitingForRound({ partnerName }: { partnerName: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-4">
+      <div className="flex gap-1">
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+      </div>
+      <p className="text-sm font-medium text-foreground text-center">
+        Waiting for {partnerName} to start a round…
+      </p>
+      <p className="text-xs text-muted-foreground">Both of you need to have the game open 💕</p>
+    </div>
+  );
+}
+
 export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory, onSendToChat, onComplete }: GameComponentProps) {
-  const [phase, setPhase] = useState<"loading" | "completing" | "waiting" | "revealed">("loading");
+  const [phase, setPhase] = useState<Phase>("loading");
   const [starter, setStarter] = useState("");
   const [myCompletion, setMyCompletion] = useState("");
   const [partnerCompletion, setPartnerCompletion] = useState<string | null>(null);
@@ -17,20 +35,19 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
 
   const isPlayer1 = !partnerUid || uid < (partnerUid ?? "z");
   const myField = isPlayer1 ? "completion1" : "completion2";
-  const partnerField = isPlayer1 ? "completion2" : "completion1";
 
   const startRound = async () => {
     setPhase("loading");
     setMyCompletion("");
     setPartnerCompletion(null);
     setPandaComment("");
+    setDraftCompletion("");
     try {
       const s = await askPanda(
         `Give ${myName} and ${partnerName} one romantic sentence starter to complete together. Just the unfinished sentence ending with "..." — no intro. Max 12 words. Examples: "The moment I knew I loved you was...", "What makes our love special is..."`,
         memory
       );
       const clean = s.replace(/^["']|["']$/g, "");
-      setStarter(clean);
       const id = await addGameDoc("completesentence", {
         starter: clean,
         completion1: null,
@@ -38,23 +55,37 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
         status: "completing",
       });
       setDocId(id);
-      setPhase("completing");
     } catch {
-      setStarter("What makes our relationship different from others is…");
-      setPhase("completing");
+      const id = await addGameDoc("completesentence", {
+        starter: "What makes our relationship different from others is…",
+        completion1: null,
+        completion2: null,
+        status: "completing",
+      });
+      setDocId(id);
     }
   };
 
   useEffect(() => {
     const unsub = subscribeLatestGame("completesentence", (data) => {
-      if (!data) { startRound(); return; }
+      if (!data) {
+        if (isPlayer1) {
+          startRound();
+        } else {
+          setPhase("waiting_for_round");
+        }
+        return;
+      }
+
       const status = data.status as string;
       setDocId(data.id as string);
       setStarter(data.starter as string ?? "");
+
       const mine = isPlayer1 ? data.completion1 : data.completion2;
       const theirs = isPlayer1 ? data.completion2 : data.completion1;
       if (mine) setMyCompletion(mine as string);
       if (theirs) setPartnerCompletion(theirs as string);
+
       if (status === "completing") {
         if (!mine) setPhase("completing");
         else setPhase("waiting");
@@ -75,7 +106,7 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
   };
 
   useEffect(() => {
-    if (myCompletion && partnerCompletion && docId && phase === "waiting") {
+    if (myCompletion && partnerCompletion && docId && phase === "waiting" && isPlayer1) {
       doReveal();
     }
   }, [myCompletion, partnerCompletion, phase]);
@@ -83,10 +114,8 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
   const doReveal = async () => {
     if (!docId) return;
     const comment = await generateReveal(starter, myCompletion, partnerCompletion!, myName, partnerName);
-    setPandaComment(comment);
     await setGameDoc("completesentence", docId, { status: "revealed", pandaComment: comment });
     await addGameHistory("completesentence", `"${starter}" — ${myName}: "${myCompletion}", ${partnerName}: "${partnerCompletion}"`);
-    setPhase("revealed");
     onSendToChat({
       gameType: "completesentence",
       gameName: "Complete the Sentence",
@@ -97,6 +126,7 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
   };
 
   if (phase === "loading") return <PandaThinking label="Panda is writing a sentence starter…" />;
+  if (phase === "waiting_for_round") return <WaitingForRound partnerName={partnerName} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -142,7 +172,13 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
             </div>
           </div>
           {pandaComment && <PandaBubble text={pandaComment} />}
-          <Button onClick={startRound} className="w-full rounded-2xl">New Sentence ✍️</Button>
+          {isPlayer1 ? (
+            <Button onClick={startRound} className="w-full rounded-2xl">New Sentence ✍️</Button>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-xs text-muted-foreground">Waiting for {partnerName} to start a new round…</p>
+            </div>
+          )}
         </div>
       )}
     </div>
