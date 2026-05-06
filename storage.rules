@@ -1,9 +1,38 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Only authenticated users can read/write storage
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Images
+    match /images/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth()
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // Voice messages
+    match /voice/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth()
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Videos
+    match /videos/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth()
+        && request.resource.size < 100 * 1024 * 1024;
+    }
+
+    // Documents
+    match /docs/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth()
+        && request.resource.size < 50 * 1024 * 1024;
     }
   }
 }

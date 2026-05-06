@@ -3,63 +3,47 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAllowed() {
-      return request.auth != null;
+      return request.auth != null && 
+             request.auth.uid in [
+               "<UID_USER_1>", 
+               "<UID_USER_2>"
+             ];
     }
 
-    // Messages: allow read/write for authenticated users
-    match /messages/{messageId} {
-      allow read: if isAllowed();
-      allow create: if isAllowed();
-      allow update: if isAllowed();
-      allow delete: if isAllowed() && resource.data.senderId == request.auth.uid;
+    // Core chat
+    match /messages/{id}          { allow read, write: if isAllowed(); }
+    match /sharedNote/{id}        { allow read, write: if isAllowed(); }
+    match /pinnedMessages/{id}    { allow read, write: if isAllowed(); }
+    match /typingStatus/{uid}     { allow read, write: if isAllowed(); }
+    match /userPresence/{uid}     { allow read, write: if isAllowed(); }
+    match /aiMemory/{id}          { allow read, write: if isAllowed(); }
+
+    // Calls (WebRTC signaling)
+    match /calls/{callId} { 
+      allow read, write: if isAllowed();
+      match /callerCandidates/{c} { allow read, write: if isAllowed(); }
+      match /calleeCandidates/{c} { allow read, write: if isAllowed(); }
     }
 
-    // Presence & Typing: Essential for the real-time indicators
-    match /userPresence/{uid} {
+    // Games
+    match /games/{gameType}/{col}/{docId} { 
+      allow read, write: if isAllowed(); 
+    }
+    match /pandaMemory/{id}       { allow read, write: if isAllowed(); }
+
+    // User preferences & tokens
+    match /userPreferences/{uid}  { 
       allow read: if isAllowed();
       allow write: if isAllowed() && request.auth.uid == uid;
     }
-
-    match /typingStatus/{uid} {
-      allow read: if isAllowed();
-      allow write: if isAllowed() && request.auth.uid == uid;
-    }
-
-    // Login Activity: This was likely the culprit!
-    match /loginActivity/{logId} {
-      allow read: if isAllowed();
-      allow create: if isAllowed();
-    }
-
-    // Shared Note & AI Memory
-    match /sharedNote/{docId} {
-      allow read, write: if isAllowed();
-    }
-    match /aiMemory/{docId} {
-      allow read, write: if isAllowed();
-    }
-
-    // Pinned Messages
-    match /pinnedMessages/{messageId} {
-      allow read, write: if isAllowed();
-    }
-
-    // User Preferences & Tokens
-    match /userPreferences/{uid} {
-      allow read, write: if isAllowed() && request.auth.uid == uid;
-    }
-    match /users/{uid}/tokens/{tokenId} {
+    match /users/{uid}/tokens/{t} { 
       allow read, write: if isAllowed() && request.auth.uid == uid;
     }
 
-    // Calls
-    match /calls/{callId} {
-      allow read, write: if isAllowed();
-    }
-
-    // Fallback
-    match /{document=**} {
-      allow read, write: if false;
+    // Encryption salt (read-only after creation)
+    match /appConfig/{id}         { 
+      allow read: if isAllowed();
+      allow write: if false;
     }
   }
 }
