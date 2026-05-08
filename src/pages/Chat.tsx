@@ -21,6 +21,8 @@ import {
   subscribeToAIMemory,
   AIMemory,
   SharedNote,
+  subscribeToUserPreferences,
+  saveUserPreference,
 } from "@/lib/firestore";
 import { uploadImage, uploadVideo, uploadDocument } from "@/lib/storage";
 import { drawBadge, clearBadge } from "@/lib/faviconBadge";
@@ -263,6 +265,7 @@ export default function Chat() {
   const [atMenuOpen, setAtMenuOpen] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
 
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -349,8 +352,20 @@ export default function Chat() {
   useEffect(() => {
     const unsub = subscribeToPinnedMessages(setPinnedMessages);
     const unsub2 = subscribeToAIMemory(setAiMemory);
-    return () => { unsub(); unsub2(); };
-  }, []);
+    
+    let unsub3: (() => void) | undefined;
+    if (user) {
+      unsub3 = subscribeToUserPreferences(user.uid, (prefs) => {
+
+      });
+    }
+    
+    return () => { 
+      unsub(); 
+      unsub2(); 
+      if (unsub3) unsub3();
+    };
+  }, [user]);
 
   useEffect(() => {
     const base = "SweeTalk";
@@ -622,6 +637,8 @@ export default function Chat() {
     document.documentElement.style.setProperty("--chat-font-size", v);
   };
 
+
+
   const presenceLabel = partnerPresence
     ? partnerPresence.online
       ? "Online"
@@ -648,7 +665,9 @@ export default function Chat() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground leading-tight truncate">{partnerName}</p>
+          <p className="font-semibold text-foreground leading-tight truncate">
+            {partnerName}
+          </p>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             {partnerPresence?.online && (
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />

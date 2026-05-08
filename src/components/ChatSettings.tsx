@@ -155,17 +155,7 @@ export function ChatSettings({
             </div>
           </section>
 
-          {/* Nickname */}
-          <section>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Partner Nickname</h3>
-            <Input
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="Nickname"
-              className="rounded-xl"
-              onBlur={() => save({ nickname })}
-            />
-          </section>
+
 
           {/* Notifications mute */}
           <section>

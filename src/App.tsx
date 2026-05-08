@@ -43,14 +43,7 @@ function GuestRoute({ component: Component }: { component: React.ComponentType }
   return <Component />;
 }
 
-/**
- * Side-effect component to initialize theme-related CSS variables
- * and keep them in sync with the theme context.
- */
-function ThemeInitializer({ children }: { children: React.ReactNode }) {
-  useTheme();
-  return <>{children}</>;
-}
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -97,14 +90,14 @@ function App() {
   return (
     <TooltipProvider>
       <AuthProvider>
-        <ThemeInitializer>
+        <ThemeProvider>
           <PinGuard>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <Router />
             </WouterRouter>
           </PinGuard>
           <Toaster />
-        </ThemeInitializer>
+        </ThemeProvider>
       </AuthProvider>
     </TooltipProvider>
   );

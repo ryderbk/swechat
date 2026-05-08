@@ -195,13 +195,22 @@ export function applyTheme(themeName: string, darkMode: boolean) {
   const theme = THEMES.find((t) => t.name === themeName) ?? THEMES[0];
   const root = document.documentElement;
 
+  // Always apply primary colors from the selected theme
   root.style.setProperty("--primary", theme.primary);
   root.style.setProperty("--primary-foreground", theme.primaryForeground);
   root.style.setProperty("--ring", theme.ring);
 
-  const applyLight = theme.isDark || !darkMode;
+  // Logic: 
+  // 1. If darkMode is OFF (light mode requested):
+  //    - If the theme is LIGHT (isDark: false), apply its specific colors.
+  //    - If the theme is DARK (isDark: true), don't apply its colors (let it fall back to :root default light theme).
+  // 2. If darkMode is ON (dark mode requested):
+  //    - If the theme is DARK (isDark: true), apply its specific colors.
+  //    - If the theme is LIGHT (isDark: false), don't apply its colors (let it fall back to .dark default dark theme).
 
-  if (applyLight) {
+  const shouldApplyThemeVariables = theme.isDark === darkMode;
+
+  if (shouldApplyThemeVariables) {
     root.style.setProperty("--background", theme.background);
     root.style.setProperty("--foreground", theme.foreground);
     root.style.setProperty("--card", theme.card);
@@ -219,6 +228,7 @@ export function applyTheme(themeName: string, darkMode: boolean) {
     root.style.setProperty("--sidebar-accent", theme.accent);
     root.style.setProperty("--sidebar-accent-foreground", theme.accentForeground);
   } else {
+    // Clear theme-specific variables to let CSS classes (:root or .dark) take over
     for (const prop of LIGHT_PROPS) {
       root.style.removeProperty(prop);
     }

@@ -3,16 +3,20 @@ import { collection, onSnapshot, QuerySnapshot, QueryDocumentSnapshot } from "fi
 import { db } from "@/lib/firebase";
 import { useAuth } from "./useAuth";
 
-function sanitizeName(name: string): string {
-  if (/sbharathkumar|mr\.?\s*kumarr*/i.test(name)) return "Bharath Kumar";
-  if (/saiswetha|mrs\.?\s*kumarr*/i.test(name)) return "Saiswetha";
+const kUserA = 'sbharathkumar1125';
+const kUserB = 'saiswetharr';
+
+function sanitizeName(name: string, uid?: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("bharath") || n.includes("kumarr") || uid === kUserA) return "Bharath Kumar";
+  if (n.includes("swetha") || n.includes("saiswetha") || uid === kUserB) return "Saiswetha";
   return name;
 }
 
 export function usePartnerUid() {
   const { user } = useAuth();
   const [partnerUid, setPartnerUid] = useState<string | null>(null);
-  const [partnerName, setPartnerName] = useState<string>("My Love");
+  const [partnerName, setPartnerName] = useState<string>("Partner");
 
   useEffect(() => {
     if (!user) return;
@@ -21,14 +25,13 @@ export function usePartnerUid() {
       if (other) {
         setPartnerUid(other.id);
         const data = other.data();
-        if (data.displayName) setPartnerName(sanitizeName(data.displayName));
+        setPartnerName(sanitizeName(data.displayName || "", other.id));
       } else {
         // Fallback: use env variable if partner hasn't set presence yet
         const fallbackUid = import.meta.env.VITE_PARTNER_UID;
-        const fallbackName = import.meta.env.VITE_PARTNER_NAME || "My Love";
         if (fallbackUid) {
           setPartnerUid(fallbackUid);
-          setPartnerName(fallbackName);
+          setPartnerName(sanitizeName("", fallbackUid));
         }
       }
     });

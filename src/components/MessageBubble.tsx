@@ -26,6 +26,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { formatText } from "@/lib/formatText";
+import { VoiceMessage } from "./VoiceMessage";
 
 interface Props {
   message: Message;
@@ -341,12 +342,7 @@ export function MessageBubble({
 
               {/* Voice */}
               {message.type === "voice" && message.voiceUrl && (
-                <audio
-                  controls
-                  src={message.voiceUrl}
-                  className="max-w-[200px]"
-                  data-testid={`audio-${message.id}`}
-                />
+                <VoiceMessage url={message.voiceUrl} isMine={isMine} />
               )}
 
               {/* Text */}

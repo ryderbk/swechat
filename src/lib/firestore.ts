@@ -376,6 +376,12 @@ export async function getUserPreferences(uid: string): Promise<Record<string, un
   return snap.exists() ? (snap.data() as Record<string, unknown>) : {};
 }
 
+export function subscribeToUserPreferences(uid: string, callback: (prefs: Record<string, unknown>) => void) {
+  return onSnapshot(doc(db, "userPreferences", uid), (snap) => {
+    callback(snap.exists() ? (snap.data() as Record<string, unknown>) : {});
+  });
+}
+
 export async function clearAllMessages(): Promise<void> {
   const snap = await getDocs(collection(db, "messages"));
   const chunks: Promise<void>[] = [];

@@ -45,9 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u);
       setLoading(false);
       if (u) {
-        let name = u.displayName ?? u.email?.split("@")[0] ?? "You";
-        if (name === "sbharathkumar1125" || name === "Mr. Kumarrr") name = "Mr. Kumarr";
-        if (name === "saiswetharr" || name === "Mrs. Kumarrr") name = "Mrs. Kumarr";
+        let name = "User";
+        if (u.email === "sbharathkumar1125@gmail.com" || u.email?.includes("bharath")) name = "Bharath Kumar";
+        else if (u.email === "saiswetharr@gmail.com" || u.email?.includes("swetha")) name = "Saiswetha";
+        else name = u.displayName ?? u.email?.split("@")[0] ?? "User";
         
         await setUserPresence(u.uid, true, name);
         const token = await requestNotificationPermission();
