@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PandaBubble, PandaThinking } from "./PandaAvatar";
-import { askPanda, generateReveal } from "@/lib/panda";
+import { generateReveal } from "@/lib/panda";
+import { getRandomQuestion } from "@/lib/questions";
 import { subscribeLatestGame, addGameDoc, setGameDoc, addGameHistory } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
@@ -43,11 +44,8 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
     setPandaComment("");
     setDraftCompletion("");
     try {
-      const s = await askPanda(
-        `Give ${myName} and ${partnerName} one romantic sentence starter to complete together. Just the unfinished sentence ending with "..." — no intro. Max 12 words. Examples: "The moment I knew I loved you was...", "What makes our love special is..."`,
-        memory
-      );
-      const clean = s.replace(/^["']|["']$/g, "");
+      const res = getRandomQuestion("completesentence");
+      const clean = res.question;
       const id = await addGameDoc("completesentence", {
         starter: clean,
         completion1: null,
@@ -140,10 +138,10 @@ export function CompleteSentence({ uid, partnerUid, partnerName, myName, memory,
           <p className="text-xs text-muted-foreground text-center">Finish the sentence in your own words — both answers revealed together</p>
           <Input
             value={draftCompletion}
-            onChange={(e) => setDraftCompletion(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraftCompletion(e.target.value)}
             placeholder="…your ending here"
             className="rounded-2xl"
-            onKeyDown={(e) => e.key === "Enter" && submitCompletion()}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && submitCompletion()}
           />
           <Button onClick={submitCompletion} disabled={!draftCompletion.trim()} className="rounded-2xl">
             Submit my ending 🔒

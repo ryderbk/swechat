@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { Message, AIMemory } from "./firestore";
+import { getRandomQuestion } from "./questions";
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const MODEL = "llama-3.3-70b-versatile";
@@ -64,42 +65,29 @@ async function callGroq(
 
 export async function generateQuestion(
   gameType: string,
-  memory: PandaGameMemory,
-  category?: string
+  _memory: PandaGameMemory,
+  _category?: string
 ): Promise<{ question: string; hint?: string; options?: string[] }> {
-  const asked = memory.gameHistory
-    .filter((h) => h.game === gameType)
-    .map((h) => h.result)
-    .slice(0, 10)
-    .join(" | ");
-  const facts = memory.knownFacts.slice(0, 5).join(", ") || "a deeply in love couple";
+  const typeMap: Record<string, string> = {
+    "This or That": "thisorthat",
+    "Memory Quiz": "memoryquiz",
+    "Answer & Reveal": "answerreveal",
+    "Complete the Sentence": "completesentence",
+    "One Question a Day": "dailyquestion",
+    "Truth or Dare": "truthordare",
+    "Mood Sync": "moodsync",
+    "Random Question": "randomquestion",
+    "Guess My Answer": "guessmyanswer",
+  };
 
-  const prompt = `Generate one ${gameType} question for Bharath Kumar and Saiswetha.
-${category ? `Category: ${category}` : ""}
-What we know: ${facts}
-Avoid repeating: ${asked || "nothing yet"}
-
-Return JSON only:
-- For "This or That": {"question":"...", "options":["Option A","Option B"]}
-- For "Memory Quiz": {"question":"...", "options":["A","B","C","D"], "hint":"..."}
-- For others: {"question":"...", "hint":"..."}
-Keep the question warm, romantic, personal. Max 25 words.`;
-
-  try {
-    const res = await callGroq(
-      [{ role: "system", content: PANDA_SYSTEM }, { role: "user", content: prompt }],
-      true
-    );
-    return JSON.parse(res);
-  } catch {
-    if (gameType === "This or That") {
-      return { question: "Morning cuddle or goodnight message?", options: ["Morning cuddle 🌅", "Goodnight message 🌙"] };
-    }
-    if (gameType === "Memory Quiz") {
-      return { question: "What is your partner's favorite color?", hint: "Think carefully!", options: ["Red 🔴", "Pink 💗", "Blue 🔵", "Green 🟢"] };
-    }
-    return { question: "What made you fall in love with your partner?", hint: "Share something real 💕" };
-  }
+  const key = typeMap[gameType] || gameType.toLowerCase().replace(/\s/g, "");
+  const res = getRandomQuestion(key);
+  
+  return {
+    question: res.question,
+    options: res.options,
+    hint: gameType === "Memory Quiz" ? "Think carefully! 💕" : undefined,
+  };
 }
 
 export async function evaluateAnswer(

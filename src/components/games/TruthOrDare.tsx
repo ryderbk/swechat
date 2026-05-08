@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PandaBubble, PandaThinking } from "./PandaAvatar";
 import { askPanda } from "@/lib/panda";
+import { getRandomQuestion } from "@/lib/questions";
 import { subscribeLatestGame, addGameDoc, setGameDoc, addGameHistory } from "@/lib/gameFirestore";
 import type { GameComponentProps } from "./GamePanel";
 
@@ -80,51 +81,41 @@ export function TruthOrDare({ uid, partnerUid, partnerName, myName, memory, onSe
     setPhase("menu");
   };
 
-  const generate = async (t: "truth" | "dare", cat: string) => {
+  const generate = async (t: "truth" | "dare") => {
     setPhase("loading");
     setDone(false);
     setPandaComment("");
-    const catLabel = CATEGORIES.find((c) => c.id === cat)?.label ?? cat;
-    try {
-      const q = await askPanda(
-        `Generate one ${t === "truth" ? "truth question" : "dare challenge"} for ${myName} in a ${catLabel} couples game. Make it ${cat === "sweet" ? "romantic and heartfelt" : cat === "funny" ? "funny and playful" : cat === "deep" ? "thoughtful and meaningful" : "bold and daring but appropriate for couples"}. Just the ${t} prompt, no intro. Max 25 words.`,
-        memory
-      );
-      const cleanPrompt = q.replace(/^["']|["']$/g, "");
-      if (docId) {
-        await setGameDoc("truthordare", docId, {
-          type: t,
-          category: cat,
-          prompt: cleanPrompt,
-          status: "playing",
-          done: false,
-        });
-      } else {
-        const id = await addGameDoc("truthordare", {
-          type: t,
-          category: cat,
-          prompt: cleanPrompt,
-          status: "playing",
-          done: false,
-          pandaComment: "",
-          initiatorId: uid,
-        });
-        setDocId(id);
-      }
-    } catch {
-      const fallback = t === "truth"
-        ? "What is one thing you love most about our relationship?"
-        : "Send your partner a voice message telling them three things you love about them.";
-      if (docId) {
-        await setGameDoc("truthordare", docId, { type: t, category: cat, prompt: fallback, status: "playing", done: false });
-      } else {
-        const id = await addGameDoc("truthordare", {
-          type: t, category: cat, prompt: fallback, status: "playing",
-          done: false, pandaComment: "", initiatorId: uid,
-        });
-        setDocId(id);
-      }
+    
+    // We try to find a question of the requested type from our list
+    let res = getRandomQuestion("truthordare");
+    // Retry a few times to get the right type if needed (since they are mixed in the 100)
+    for (let i = 0; i < 10; i++) {
+      if (res.type === t) break;
+      res = getRandomQuestion("truthordare");
     }
+
+    const cleanPrompt = res.question;
+    if (docId) {
+      await setGameDoc("truthordare", docId, {
+        type: t,
+        category: "Classic",
+        prompt: cleanPrompt,
+        status: "playing",
+        done: false,
+      });
+    } else {
+      const id = await addGameDoc("truthordare", {
+        type: t,
+        category: "Classic",
+        prompt: cleanPrompt,
+        status: "playing",
+        done: false,
+        pandaComment: "",
+        initiatorId: uid,
+      });
+      setDocId(id);
+    }
+    setPhase("playing");
   };
 
   const markDone = async () => {
@@ -207,26 +198,19 @@ export function TruthOrDare({ uid, partnerUid, partnerName, myName, memory, onSe
 
             {type && (
               <div className="flex flex-col gap-2">
-                <p className="text-xs text-muted-foreground text-center font-medium">Choose your vibe</p>
-                {CATEGORIES.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      if (!docId) {
-                        startSelectingRound().then(() => generate(type, c.id));
-                      } else {
-                        generate(type, c.id);
-                      }
-                    }}
-                    className="bg-gradient-to-r from-primary/10 to-primary/5 border border-border rounded-2xl px-4 py-3 text-left hover:border-primary transition-all flex items-center gap-3"
-                  >
-                    <span className="text-xl">{c.label.split(" ")[1]}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{c.label.split(" ")[0]}</p>
-                      <p className="text-[10px] text-muted-foreground">{c.desc}</p>
-                    </div>
-                  </button>
-                ))}
+                <p className="text-xs text-muted-foreground text-center font-medium">Ready?</p>
+                <button
+                  onClick={() => {
+                    if (!docId) {
+                      startSelectingRound().then(() => generate(type));
+                    } else {
+                      generate(type);
+                    }
+                  }}
+                  className="bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary rounded-2xl px-4 py-4 text-center hover:bg-primary/20 transition-all"
+                >
+                  <p className="text-sm font-bold text-foreground">Get Random {type === 'truth' ? 'Truth' : 'Dare'} 🎲</p>
+                </button>
               </div>
             )}
           </>
@@ -265,7 +249,7 @@ export function TruthOrDare({ uid, partnerUid, partnerName, myName, memory, onSe
 
       {!done && (
         <button
-          onClick={() => generate(type!, category!)}
+          onClick={() => generate(type!)}
           className="text-xs text-muted-foreground text-center hover:text-primary transition-colors"
         >
           Skip this one →

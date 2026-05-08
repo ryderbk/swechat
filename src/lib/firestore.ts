@@ -94,17 +94,6 @@ export interface PinnedMessage {
   pinnedAt: Timestamp;
 }
 
-export interface CallDoc {
-  offer: RTCSessionDescriptionInit | null;
-  answer: RTCSessionDescriptionInit | null;
-  status: "calling" | "active" | "ended";
-  type: "voice" | "video";
-  callerId: string;
-  calleeId: string;
-  startedAt: Timestamp;
-  endedAt: Timestamp | null;
-}
-
 const MESSAGES_PER_PAGE = 20;
 
 export function messagesQuery(lastDoc?: QueryDocumentSnapshot) {
@@ -410,18 +399,4 @@ export async function getOrCreateEncryptionSalt(): Promise<Uint8Array> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   await setDoc(ref, { salt: btoa(String.fromCharCode(...salt)) });
   return salt;
-}
-
-export function subscribeToCallForCallee(
-  calleeId: string,
-  callback: (callId: string, data: CallDoc) => void
-) {
-  const q = query(
-    collection(db, "calls"),
-    where("calleeId", "==", calleeId),
-    where("status", "==", "calling")
-  );
-  return onSnapshot(q, (snap) => {
-    snap.docs.forEach((d) => callback(d.id, d.data() as CallDoc));
-  });
 }

@@ -29,7 +29,7 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
-import { CallManager } from "@/components/CallManager";
+import { CameraCapture } from "@/components/CameraCapture";
 import { ChatSettings } from "@/components/ChatSettings";
 import { generatePandaReply } from "@/lib/panda";
 import GamePanel from "@/components/games/GamePanel";
@@ -60,8 +60,7 @@ import {
   Paperclip,
   Video as VideoIcon,
   FileText,
-  Phone,
-  Video,
+  Camera,
   Settings,
   Pin,
   Reply,
@@ -262,6 +261,7 @@ export default function Chat() {
   const [bubbleShape, setBubbleShape] = useState(() => localStorage.getItem("sweetalk_bubble_shape") ?? "rounded");
   const [fontSize, setFontSize] = useState(() => localStorage.getItem("sweetalk_font_size") ?? "15px");
   const [atMenuOpen, setAtMenuOpen] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -550,6 +550,29 @@ export default function Chat() {
     setTimeout(() => scrollToBottom(true), 50);
   };
 
+  const handleCameraCapture = async (blob: Blob, type: "image" | "video") => {
+    if (!user) return;
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      let url = "";
+      if (type === "image") {
+        url = await uploadImage(new File([blob], "camera-capture.jpg", { type: "image/jpeg" }), setUploadProgress);
+        await sendMessage(user.uid, { type: "image", imageUrl: url });
+      } else {
+        url = await uploadVideo(new File([blob], "camera-capture.webm", { type: "video/webm" }), setUploadProgress);
+        await sendMessage(user.uid, { type: "video", videoUrl: url });
+      }
+      setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      console.error("Capture upload failed:", err);
+      alert("Failed to upload capture. Please try again.");
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
   const handleEmojiSelect = (emoji: string) => {
     setText((t) => t + emoji);
   };
@@ -615,8 +638,7 @@ export default function Chat() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* CallManager always mounted */}
-      <CallManager />
+
 
       {/* Header */}
       <header className="flex-shrink-0 bg-card/80 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3 shadow-sm z-10">
@@ -635,24 +657,7 @@ export default function Chat() {
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-xl text-muted-foreground"
-            onClick={() => document.getElementById("start-voice-call")?.click()}
-            title="Voice call"
-          >
-            <Phone className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-xl text-muted-foreground"
-            onClick={() => document.getElementById("start-video-call")?.click()}
-            title="Video call"
-          >
-            <Video className="w-4 h-4" />
-          </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -1010,6 +1015,17 @@ export default function Chat() {
             <div className="flex items-end gap-2">
               <EmojiPicker onSelect={handleEmojiSelect} />
 
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                className="rounded-xl text-muted-foreground hover:text-foreground"
+                onClick={() => setShowCamera(true)}
+                title="Take photo or video"
+              >
+                <Camera className="w-5 h-5" />
+              </Button>
+
               {/* Image upload */}
               <label data-testid="button-image-upload" className="cursor-pointer">
                 <input
@@ -1127,6 +1143,12 @@ export default function Chat() {
         onBubbleShapeChange={handleBubbleShapeChange}
         fontSize={fontSize}
         onFontSizeChange={handleFontSizeChange}
+      />
+
+      <CameraCapture
+        open={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={handleCameraCapture}
       />
     </div>
   );
