@@ -27,7 +27,7 @@ function formatBytes(bytes: number): string {
 export default function Media() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("media");
-  const [mediaItems, setMediaItems] = useState<{ id: string; type: "image" | "video" | "voice"; url: string; createdAt: Date }[]>([]);
+  const [mediaItems, setMediaItems] = useState<{ id: string; type: "image" | "video" | "voice" | "gif"; url: string; createdAt: Date }[]>([]);
   const [links, setLinks] = useState<{ id: string; url: string; title: string; description: string; image: string | null; createdAt: Date }[]>([]);
   const [files, setFiles] = useState<{ id: string; name: string; url: string; size: number | null; createdAt: Date }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +54,8 @@ export default function Media() {
           media.push({ id: d.id, type: "video", url: data.videoUrl, createdAt });
         } else if (data.type === "voice" && data.voiceUrl) {
           media.push({ id: d.id, type: "voice", url: data.voiceUrl, createdAt });
+        } else if (data.type === "gif" && data.gifUrl) {
+          media.push({ id: d.id, type: "gif", url: data.gifUrl, createdAt });
         }
 
         if (data.linkPreview) {
@@ -167,6 +169,8 @@ export default function Media() {
                         <PlayCircle className="w-8 h-8 text-white/80" />
                         <video src={item.url} className="absolute inset-0 w-full h-full object-cover opacity-40" />
                       </div>
+                    ) : item.type === "gif" ? (
+                      <img src={item.url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-primary/10">
                         <Music className="w-8 h-8 text-primary/60" />
@@ -278,6 +282,8 @@ export default function Media() {
               <img src={lightbox.url} alt="" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
             ) : lightbox.type === "video" ? (
               <video src={lightbox.url} controls autoPlay className="max-w-full max-h-[80vh] rounded-xl shadow-2xl" />
+            ) : lightbox.type === "gif" ? (
+              <img src={lightbox.url} alt="" className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl" />
             ) : (
               <div className="bg-card p-8 rounded-3xl flex flex-col items-center gap-4 border border-border">
                 <Music className="w-16 h-16 text-primary" />

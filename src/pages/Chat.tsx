@@ -30,6 +30,7 @@ import { queueMessage, getQueuedMessages, removeQueuedMessage } from "@/lib/offl
 import { MessageBubble } from "@/components/MessageBubble";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { GifPicker } from "@/components/GifPicker";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { CameraCapture } from "@/components/CameraCapture";
 import { ChatSettings } from "@/components/ChatSettings";
@@ -68,7 +69,7 @@ import {
   Reply,
   Gamepad2,
 } from "lucide-react";
-import { formatDistanceToNow, differenceInDays } from "date-fns";
+import { formatDistanceToNow, differenceInDays, isSameDay } from "date-fns";
 
 const ANNIVERSARY_DATE = new Date("2025-07-07");
 
@@ -264,6 +265,7 @@ export default function Chat() {
   const [fontSize, setFontSize] = useState(() => localStorage.getItem("sweetalk_font_size") ?? "15px");
   const [atMenuOpen, setAtMenuOpen] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
 
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -438,25 +440,61 @@ export default function Chat() {
     setTypingStatus(user.uid, false);
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
 
-    if (!navigator.onLine) {
-      await queueMessage({ senderId: user.uid, payload: { text: msg, type: "text" } });
-      return;
-    }
-
-    const urlMatch = msg.match(URL_REGEX);
-    let linkPreview = null;
-    if (urlMatch) {
-      linkPreview = await fetchLinkPreview(urlMatch[0]);
-    }
-
-    await sendMessage(user.uid, {
+    const tempId = `temp-${Date.now()}`;
+    const pendingMsg: Message = {
+      id: tempId,
+      senderId: user.uid,
       text: msg,
       type: "text",
+      createdAt: { toDate: () => new Date() } as any,
+      status: "sending",
+      edited: false,
+      deleted: false,
+      reactions: {},
       replyTo: currentReply
-        ? { id: currentReply.id, text: currentReply.text ?? "[media]", senderId: currentReply.senderId }
+        ? { 
+            id: currentReply.id, 
+            text: currentReply.text ?? "[media]", 
+            senderId: currentReply.senderId,
+            type: currentReply.type,
+            gameName: currentReply.gameData?.gameName,
+            emoji: currentReply.gameData?.emoji,
+          }
         : null,
-      linkPreview,
-    });
+      starred: false,
+      isAI: false,
+      linkPreview: null,
+    };
+
+    setPendingMessages(prev => [...prev, pendingMsg]);
+
+    try {
+      const urlMatch = msg.match(URL_REGEX);
+      let linkPreview = null;
+      if (urlMatch) {
+        linkPreview = await fetchLinkPreview(urlMatch[0]);
+      }
+
+      await sendMessage(user.uid, {
+        text: msg,
+        type: "text",
+        replyTo: currentReply
+          ? { 
+              id: currentReply.id, 
+              text: currentReply.text ?? "[media]", 
+              senderId: currentReply.senderId,
+              type: currentReply.type,
+              gameName: currentReply.gameData?.gameName,
+              emoji: currentReply.gameData?.emoji,
+            }
+          : null,
+        linkPreview,
+      });
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+    } catch (err) {
+      console.error("Send failed:", err);
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+    }
 
     if (isPandaTrigger) {
       // Clean input: Remove "@panda" and trim
@@ -503,12 +541,34 @@ export default function Chat() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const tempId = `temp-${Date.now()}`;
+    const pendingMsg: Message = {
+      id: tempId,
+      senderId: user.uid,
+      text: null,
+      type: "image",
+      imageUrl: URL.createObjectURL(file),
+      createdAt: { toDate: () => new Date() } as any,
+      status: "sending",
+      edited: false,
+      deleted: false,
+      reactions: {},
+      replyTo: null,
+      starred: false,
+      localPath: URL.createObjectURL(file),
+    };
+    setPendingMessages(prev => [...prev, pendingMsg]);
+
     setUploading(true);
     setUploadProgress(0);
     try {
       const url = await uploadImage(file, setUploadProgress);
       await sendMessage(user.uid, { type: "image", imageUrl: url });
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
       setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -523,13 +583,34 @@ export default function Chat() {
       alert("Video must be under 100MB");
       return;
     }
+    const tempId = `temp-${Date.now()}`;
+    const pendingMsg: Message = {
+      id: tempId,
+      senderId: user.uid,
+      text: null,
+      type: "video",
+      videoUrl: URL.createObjectURL(file),
+      createdAt: { toDate: () => new Date() } as any,
+      status: "sending",
+      edited: false,
+      deleted: false,
+      reactions: {},
+      replyTo: null,
+      starred: false,
+    };
+    setPendingMessages(prev => [...prev, pendingMsg]);
+
     setUploading(true);
     setUploadProgress(0);
     setShowFileMenu(false);
     try {
       const url = await uploadVideo(file, setUploadProgress);
       await sendMessage(user.uid, { type: "video", videoUrl: url });
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
       setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -540,6 +621,25 @@ export default function Chat() {
   const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const tempId = `temp-${Date.now()}`;
+    const pendingMsg: Message = {
+      id: tempId,
+      senderId: user.uid,
+      text: null,
+      type: "document",
+      documentName: file.name,
+      documentSize: file.size,
+      documentUrl: "#",
+      createdAt: { toDate: () => new Date() } as any,
+      status: "sending",
+      edited: false,
+      deleted: false,
+      reactions: {},
+      replyTo: null,
+      starred: false,
+    };
+    setPendingMessages(prev => [...prev, pendingMsg]);
+
     setUploading(true);
     setUploadProgress(0);
     setShowFileMenu(false);
@@ -551,7 +651,11 @@ export default function Chat() {
         documentName: file.name,
         documentSize: file.size,
       });
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
       setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -561,8 +665,30 @@ export default function Chat() {
 
   const handleVoiceReady = async (url: string) => {
     if (!user) return;
-    await sendMessage(user.uid, { type: "voice", voiceUrl: url });
-    setTimeout(() => scrollToBottom(true), 50);
+    const tempId = `temp-${Date.now()}`;
+    const pendingMsg: Message = {
+      id: tempId,
+      senderId: user.uid,
+      text: null,
+      type: "voice",
+      voiceUrl: url,
+      createdAt: { toDate: () => new Date() } as any,
+      status: "sending",
+      edited: false,
+      deleted: false,
+      reactions: {},
+      replyTo: null,
+      starred: false,
+    };
+    setPendingMessages(prev => [...prev, pendingMsg]);
+
+    try {
+      await sendMessage(user.uid, { type: "voice", voiceUrl: url });
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+      setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+    }
   };
 
   const handleCameraCapture = async (blob: Blob, type: "image" | "video") => {
@@ -608,12 +734,72 @@ export default function Chat() {
 
   const handleSendGameMessage = async (gameData: GameData) => {
     if (!user) return;
-    await sendMessage(user.uid, {
-      type: "game",
+    const tempId = `temp-${Date.now()}`;
+    const pendingMsg: Message = {
+      id: tempId,
+      senderId: user.uid,
       text: `${gameData.emoji} ${gameData.gameName}: ${gameData.result}`,
+      type: "game",
       gameData,
-    });
-    setTimeout(() => scrollToBottom(true), 50);
+      createdAt: { toDate: () => new Date() } as any,
+      status: "sending",
+      edited: false,
+      deleted: false,
+      reactions: {},
+      replyTo: null,
+      starred: false,
+    };
+    setPendingMessages(prev => [...prev, pendingMsg]);
+
+    try {
+      await sendMessage(user.uid, {
+        type: "game",
+        text: `${gameData.emoji} ${gameData.gameName}: ${gameData.result}`,
+        gameData,
+      });
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+      setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+    }
+  };
+
+  const handleSendGif = async (gif: { url: string; preview?: string; width?: number; height?: number }) => {
+    if (!user) return;
+    const tempId = `temp-${Date.now()}`;
+    const pendingMsg: Message = {
+      id: tempId,
+      senderId: user.uid,
+      text: null,
+      type: "gif",
+      gifUrl: gif.url,
+      previewUrl: gif.preview,
+      width: gif.width,
+      height: gif.height,
+      createdAt: { toDate: () => new Date() } as any,
+      status: "sending",
+      edited: false,
+      deleted: false,
+      reactions: {},
+      replyTo: null,
+      starred: false,
+    };
+    setPendingMessages(prev => [...prev, pendingMsg]);
+
+    try {
+      await sendMessage(user.uid, {
+        type: "gif",
+        gifUrl: gif.url,
+        previewUrl: gif.preview,
+        width: gif.width,
+        height: gif.height,
+        source: "web-picker",
+      });
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+      setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      setPendingMessages(prev => prev.filter(m => m.id !== tempId));
+    }
   };
 
   const handleWallpaperChange = (v: string) => {
@@ -652,6 +838,16 @@ export default function Chat() {
       ? { backgroundImage: wallpaper, backgroundSize: "cover", backgroundPosition: "center" }
       : { backgroundImage: wallpaper }
     : undefined;
+
+  const DateSeparator = ({ date }: { date: Date }) => (
+    <div className="flex items-center gap-4 py-6 px-10">
+      <div className="flex-1 h-px bg-border/40" />
+      <div className="px-3 py-1 rounded-full bg-muted/50 text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+        {isToday(date) ? "Today" : isYesterday(date) ? "Yesterday" : format(date, "MMMM d, yyyy")}
+      </div>
+      <div className="flex-1 h-px bg-border/40" />
+    </div>
+  );
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -894,9 +1090,9 @@ export default function Chat() {
               </div>
             )}
 
-            {messages.map((msg, idx) => {
-              const prev = messages[idx - 1];
-              const next = messages[idx + 1];
+            {[...messages, ...pendingMessages].map((msg, idx, allArray) => {
+              const prev = allArray[idx - 1];
+              const next = allArray[idx + 1];
               
               const isMine = msg.senderId === user?.uid;
               const isSameAsPrev = prev && prev.senderId === msg.senderId;
@@ -914,9 +1110,13 @@ export default function Chat() {
               // 2. Different sender from next
               // 3. Gap > 1 min to next
               const showTime = !isSameAsNext || timeDiffNext > 60000;
+              const createdAtDate = msg.createdAt?.toDate?.() ?? new Date();
+              const prevDate = prev?.createdAt?.toDate?.() ?? null;
+              const showDateSeparator = !prevDate || !isSameDay(prevDate, createdAtDate);
 
               return (
                 <div key={msg.id} className="relative">
+                  {showDateSeparator && <DateSeparator date={createdAtDate} />}
                   <MessageBubble
                     message={msg}
                     isMine={isMine}
@@ -1033,6 +1233,21 @@ export default function Chat() {
           <div className="flex-shrink-0 bg-card/80 backdrop-blur border-t border-border px-3 py-3">
             <div className="flex items-end gap-2">
               <EmojiPicker onSelect={handleEmojiSelect} />
+              
+              <GifPicker 
+                onSelect={handleSendGif}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="rounded-xl text-muted-foreground hover:text-foreground"
+                    title="Send GIF"
+                  >
+                    <span className="text-[10px] font-black border-2 border-current px-0.5 rounded leading-none">GIF</span>
+                  </Button>
+                }
+              />
 
               <Button
                 variant="ghost"

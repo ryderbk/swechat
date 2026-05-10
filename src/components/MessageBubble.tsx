@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
   Archive,
   File,
+  Loader2,
 } from "lucide-react";
 import {
   Message,
@@ -49,6 +50,7 @@ function formatTime(date: Date) {
 }
 
 function StatusIcon({ status }: { status: Message["status"] }) {
+  if (status === "sending") return <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" />;
   if (status === "read") return <CheckCheck className="w-3.5 h-3.5 text-blue-400" />;
   if (status === "delivered") return <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" />;
   return <Check className="w-3.5 h-3.5 text-muted-foreground" />;
@@ -257,10 +259,26 @@ export function MessageBubble({
             className="mb-1 text-left max-w-full border-l-2 border-primary pl-2 text-xs text-muted-foreground bg-muted/40 rounded-r-lg py-1 pr-2 truncate hover:bg-muted/60 transition-colors"
             onClick={() => onJumpTo?.(message.replyTo!.id)}
           >
-            <span className="font-medium">
-              {message.replyTo.senderId === myUid ? "You" : "Partner"}
-            </span>
-            : {message.replyTo.text}
+            <div className="flex flex-col gap-0.5">
+              <span className="font-bold text-[10px] text-primary uppercase tracking-tight">
+                {message.replyTo.senderId === myUid ? "You" : "Partner"}
+              </span>
+              <span className="truncate">
+                {message.replyTo.type === "game" 
+                  ? `${message.replyTo.emoji} ${message.replyTo.gameName}`
+                  : message.replyTo.type === "image"
+                  ? "📷 Photo"
+                  : message.replyTo.type === "video"
+                  ? "🎥 Video"
+                  : message.replyTo.type === "voice"
+                  ? "🎤 Voice message"
+                  : message.replyTo.type === "document"
+                  ? "📄 Document"
+                  : message.replyTo.type === "gif"
+                  ? "👾 GIF"
+                  : message.replyTo.text}
+              </span>
+            </div>
           </button>
         )}
 
@@ -331,13 +349,30 @@ export function MessageBubble({
               )}
 
               {/* Image */}
-              {message.type === "image" && message.imageUrl && (
+              {message.type === "image" && (message.imageUrl || message.localPath) && (
                 <img
-                  src={message.imageUrl}
+                  src={message.imageUrl ?? message.localPath}
                   alt="Shared image"
                   className="rounded-xl max-w-full max-h-64 mb-1 object-cover"
                   data-testid={`img-message-${message.id}`}
                 />
+              )}
+
+              {/* GIF */}
+              {message.type === "gif" && (message.gifUrl || message.previewUrl) && (
+                <div className="relative rounded-xl overflow-hidden bg-muted">
+                  <img
+                    src={message.gifUrl ?? message.previewUrl}
+                    alt="GIF"
+                    className="max-w-full max-h-80 object-contain"
+                    style={message.width && message.height ? { aspectRatio: `${message.width}/${message.height}` } : {}}
+                  />
+                  {message.status === "sending" && (
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                       <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Voice */}

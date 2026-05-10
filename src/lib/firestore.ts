@@ -38,7 +38,7 @@ export interface Message {
   id: string;
   senderId: string;
   text: string | null;
-  type: "text" | "image" | "voice" | "video" | "document" | "game";
+  type: "text" | "image" | "voice" | "video" | "document" | "game" | "gif";
   imageUrl: string | null;
   voiceUrl: string | null;
   videoUrl: string | null;
@@ -46,11 +46,18 @@ export interface Message {
   documentName: string | null;
   documentSize: number | null;
   createdAt: Timestamp;
-  status: "sent" | "delivered" | "read";
+  status: "sent" | "delivered" | "read" | "sending";
   edited: boolean;
   deleted: boolean;
   reactions: Record<string, string[]>;
-  replyTo: { id: string; text: string; senderId: string } | null;
+  replyTo: { 
+    id: string; 
+    text: string; 
+    senderId: string;
+    type?: string;
+    gameName?: string;
+    emoji?: string;
+  } | null;
   starred: boolean;
   isAI?: boolean;
   gameData?: GameData | null;
@@ -60,6 +67,14 @@ export interface Message {
     description: string;
     image: string | null;
   } | null;
+  duration?: number;
+  mimeType?: string;
+  gifUrl?: string;
+  previewUrl?: string;
+  width?: number;
+  height?: number;
+  source?: string;
+  localPath?: string;
 }
 
 export interface AIMemory {
@@ -140,14 +155,21 @@ export async function sendMessage(
   senderId: string,
   payload: {
     text?: string | null;
-    type: "text" | "image" | "voice" | "video" | "document" | "game";
+    type: "text" | "image" | "voice" | "video" | "document" | "game" | "gif";
     imageUrl?: string | null;
     voiceUrl?: string | null;
     videoUrl?: string | null;
     documentUrl?: string | null;
     documentName?: string | null;
     documentSize?: number | null;
-    replyTo?: { id: string; text: string; senderId: string } | null;
+    replyTo?: { 
+      id: string; 
+      text: string; 
+      senderId: string;
+      type?: string;
+      gameName?: string;
+      emoji?: string;
+    } | null;
     linkPreview?: {
       url: string;
       title: string;
@@ -156,6 +178,13 @@ export async function sendMessage(
     } | null;
     isAI?: boolean;
     gameData?: GameData | null;
+    duration?: number;
+    mimeType?: string;
+    gifUrl?: string;
+    previewUrl?: string;
+    width?: number;
+    height?: number;
+    source?: string;
   }
 ) {
   return addDoc(collection(db, "messages"), {
@@ -178,6 +207,13 @@ export async function sendMessage(
     isAI: payload.isAI ?? false,
     linkPreview: payload.linkPreview ?? null,
     gameData: payload.gameData ?? null,
+    duration: payload.duration ?? null,
+    mimeType: payload.mimeType ?? null,
+    gifUrl: payload.gifUrl ?? null,
+    previewUrl: payload.previewUrl ?? null,
+    width: payload.width ?? null,
+    height: payload.height ?? null,
+    source: payload.source ?? null,
   });
 }
 
