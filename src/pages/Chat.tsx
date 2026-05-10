@@ -69,7 +69,7 @@ import {
   Reply,
   Gamepad2,
 } from "lucide-react";
-import { formatDistanceToNow, differenceInDays, isSameDay } from "date-fns";
+import { format, formatDistanceToNow, differenceInDays, isSameDay, isToday, isYesterday } from "date-fns";
 
 const ANNIVERSARY_DATE = new Date("2025-07-07");
 

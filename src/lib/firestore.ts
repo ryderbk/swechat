@@ -39,12 +39,12 @@ export interface Message {
   senderId: string;
   text: string | null;
   type: "text" | "image" | "voice" | "video" | "document" | "game" | "gif";
-  imageUrl: string | null;
-  voiceUrl: string | null;
-  videoUrl: string | null;
-  documentUrl: string | null;
-  documentName: string | null;
-  documentSize: number | null;
+  imageUrl?: string | null;
+  voiceUrl?: string | null;
+  videoUrl?: string | null;
+  documentUrl?: string | null;
+  documentName?: string | null;
+  documentSize?: number | null;
   createdAt: Timestamp;
   status: "sent" | "delivered" | "read" | "sending";
   edited: boolean;
@@ -61,7 +61,7 @@ export interface Message {
   starred: boolean;
   isAI?: boolean;
   gameData?: GameData | null;
-  linkPreview: {
+  linkPreview?: {
     url: string;
     title: string;
     description: string;
