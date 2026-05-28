@@ -147,9 +147,9 @@ function Sidebar({
   };
 
   return (
-    <div className="flex flex-col gap-4 p-5 h-full">
+    <div className="flex flex-col gap-4 p-5 min-h-full">
       {/* Together Forever Counter */}
-      <div className="glass-card rounded-2xl p-5 border border-primary/15 shadow-romantic text-center relative overflow-hidden animate-fade-in-up">
+      <div className="glass-card rounded-2xl p-5 border border-primary/15 shadow-romantic text-center relative overflow-hidden animate-fade-in-up flex-shrink-0">
         <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl pointer-events-none" />
         <div className="flex items-center justify-center gap-2 mb-2">
           <CalendarDays className="w-4.5 h-4.5 text-primary animate-pulse-glow" />
@@ -163,7 +163,7 @@ function Sidebar({
       </div>
 
       {/* Shared Corner (Prompt + Note) */}
-      <div className="glass-card rounded-2xl p-5 border border-primary/15 shadow-romantic space-y-4 animate-fade-in-up">
+      <div className="glass-card rounded-2xl p-5 border border-primary/15 shadow-romantic space-y-4 animate-fade-in-up flex-shrink-0">
         <div>
           <div className="flex items-center gap-2 mb-2.5">
             <MessageCircleHeart className="w-4.5 h-4.5 text-primary animate-pulse-glow" />
@@ -208,7 +208,7 @@ function Sidebar({
 
       <Button
         variant="outline"
-        className="w-full rounded-full gap-2 h-11 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-semibold shadow-sm hover:shadow-md transition-all"
+        className="w-full rounded-full gap-2 h-11 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-semibold shadow-sm hover:shadow-md transition-all flex-shrink-0"
         onClick={onPlayGame}
       >
         <Gamepad2 className="w-4 h-4" />
@@ -217,7 +217,7 @@ function Sidebar({
 
       <Button
         variant="outline"
-        className="w-full rounded-full gap-2 h-11 border-border/60 hover:bg-muted shadow-sm hover:shadow-md transition-all"
+        className="w-full rounded-full gap-2 h-11 border-border/60 hover:bg-muted shadow-sm hover:shadow-md transition-all flex-shrink-0"
         onClick={() => setLocation("/media")}
       >
         <Paperclip className="w-4 h-4" />

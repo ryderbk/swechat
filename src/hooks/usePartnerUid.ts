@@ -6,17 +6,40 @@ import { useAuth } from "./useAuth";
 const kUserA = 'sbharathkumar1125';
 const kUserB = 'saiswetharr';
 
-function sanitizeName(name: string, uid?: string): string {
+function sanitizeName(name: string, uid?: string, currentUserEmail?: string | null): string {
   const n = name.toLowerCase();
   if (n.includes("bharath") || n.includes("kumarr") || uid === kUserA) return "Bharath Kumar";
   if (n.includes("swetha") || n.includes("saiswetha") || uid === kUserB) return "Saiswetha";
-  return name;
+
+  if (currentUserEmail) {
+    const curEmail = currentUserEmail.toLowerCase();
+    if (curEmail.includes("bharath")) return "Saiswetha";
+    if (curEmail.includes("swetha")) return "Bharath Kumar";
+  }
+
+  return name || "Partner";
 }
 
 export function usePartnerUid() {
   const { user } = useAuth();
   const [partnerUid, setPartnerUid] = useState<string | null>(null);
-  const [partnerName, setPartnerName] = useState<string>("Partner");
+
+  const getDefaultPartnerName = () => {
+    if (user?.email) {
+      const email = user.email.toLowerCase();
+      if (email.includes("bharath")) return "Saiswetha";
+      if (email.includes("swetha")) return "Bharath Kumar";
+    }
+    return "Partner";
+  };
+
+  const [partnerName, setPartnerName] = useState<string>(getDefaultPartnerName);
+
+  useEffect(() => {
+    if (user) {
+      setPartnerName(getDefaultPartnerName());
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -25,13 +48,17 @@ export function usePartnerUid() {
       if (other) {
         setPartnerUid(other.id);
         const data = other.data();
-        setPartnerName(sanitizeName(data.displayName || "", other.id));
+        const resolvedName = sanitizeName(data.displayName || "", other.id, user.email);
+        setPartnerName(resolvedName !== "Partner" ? resolvedName : getDefaultPartnerName());
       } else {
         // Fallback: use env variable if partner hasn't set presence yet
         const fallbackUid = import.meta.env.VITE_PARTNER_UID;
         if (fallbackUid) {
           setPartnerUid(fallbackUid);
-          setPartnerName(sanitizeName("", fallbackUid));
+          const resolvedName = sanitizeName("", fallbackUid, user.email);
+          setPartnerName(resolvedName !== "Partner" ? resolvedName : getDefaultPartnerName());
+        } else {
+          setPartnerName(getDefaultPartnerName());
         }
       }
     });
