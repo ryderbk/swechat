@@ -147,78 +147,78 @@ function Sidebar({
   };
 
   return (
-    <div className="flex flex-col gap-3.5 p-4 h-full overflow-hidden select-none">
+    <div className="flex flex-col gap-4 p-5 h-full overflow-hidden select-none">
       {/* Together Forever Counter */}
-      <div className="glass-card rounded-2xl p-4 py-3.5 border border-primary/15 shadow-romantic text-center relative overflow-hidden animate-fade-in-up flex-shrink-0">
+      <div className="glass-card rounded-2xl p-4 py-4 border border-primary/15 shadow-romantic text-center relative overflow-hidden animate-fade-in-up flex-shrink-0">
         <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl pointer-events-none" />
-        <div className="flex items-center justify-center gap-2 mb-1.5">
+        <div className="flex items-center justify-center gap-2 mb-2">
           <CalendarDays className="w-4 h-4 text-primary animate-pulse-glow" />
-          <span className="text-[10px] font-serif font-bold text-primary uppercase tracking-wider">
+          <span className="text-xs font-serif font-bold text-primary uppercase tracking-wider">
             Together Forever
           </span>
         </div>
-        <p className="text-3xl font-serif font-bold text-foreground drop-shadow-sm">{daysTogether}</p>
-        <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">days and counting</p>
-        <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-medium">Since July 7, 2025</p>
+        <p className="text-4xl font-serif font-bold text-foreground drop-shadow-sm">{daysTogether}</p>
+        <p className="text-[13px] text-muted-foreground font-semibold mt-1">days and counting</p>
+        <p className="text-[11px] text-muted-foreground/60 mt-0.5 font-medium">Since July 7, 2025</p>
       </div>
 
       {/* Shared Corner (Prompt + Note) */}
-      <div className="glass-card rounded-2xl p-4 py-3.5 border border-primary/15 shadow-romantic space-y-3 animate-fade-in-up flex-shrink-0">
+      <div className="glass-card rounded-2xl p-4 py-4 border border-primary/15 shadow-romantic space-y-4 animate-fade-in-up flex-shrink-0">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-2">
             <MessageCircleHeart className="w-4 h-4 text-primary animate-pulse-glow" />
-            <span className="text-[10px] font-serif font-bold text-primary uppercase tracking-wider">
+            <span className="text-xs font-serif font-bold text-primary uppercase tracking-wider">
               Daily Spark
             </span>
           </div>
-          <p className="text-xs text-foreground italic leading-relaxed mb-2 bg-primary/5 p-2.5 rounded-xl border border-primary/10">
+          <p className="text-[13px] text-foreground italic leading-relaxed mb-2.5 bg-primary/5 p-3 rounded-xl border border-primary/10">
             "{prompt}"
           </p>
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-[11px] h-8 border border-primary/20 hover:bg-primary/10 transition-all font-semibold rounded-full"
+            className="w-full text-xs h-9 border border-primary/20 hover:bg-primary/10 transition-all font-semibold rounded-full"
             onClick={onNewPrompt}
           >
-            <Heart className="w-3 h-3 mr-1.5 fill-primary/20" />
+            <Heart className="w-3.5 h-3.5 mr-1.5 fill-primary/20" />
             New Spark
           </Button>
         </div>
 
-        <div className="pt-3 border-t border-primary/15">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="pt-3.5 border-t border-primary/15">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Star className="w-3.5 h-3.5 text-primary fill-current" />
-              <span className="text-[10px] font-serif font-bold text-primary uppercase tracking-wider">
+              <span className="text-xs font-serif font-bold text-primary uppercase tracking-wider">
                 Our Private Note
               </span>
             </div>
-            {saving && <span className="text-[9px] text-primary animate-pulse font-bold tracking-widest">SAVING...</span>}
+            {saving && <span className="text-[10px] text-primary animate-pulse font-bold tracking-widest">SAVING...</span>}
           </div>
           <textarea
             value={content}
             onChange={(e) => handleNoteChange(e.target.value)}
             placeholder="Write a sweet message for each other here..."
-            className="w-full bg-card/50 border border-primary/10 rounded-xl p-2.5 text-xs text-foreground placeholder:text-muted-foreground/50 resize-none outline-none leading-relaxed min-h-[70px] max-h-[85px] focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-inner"
+            className="w-full bg-card/50 border border-primary/10 rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none outline-none leading-relaxed min-h-[80px] max-h-[95px] focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-inner"
           />
         </div>
       </div>
 
       <Button
         variant="outline"
-        className="w-full rounded-full gap-2 h-10 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-semibold shadow-sm hover:shadow-md transition-all flex-shrink-0"
+        className="w-full rounded-full gap-2.5 h-11 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary text-sm font-semibold shadow-sm hover:shadow-md transition-all flex-shrink-0"
         onClick={onPlayGame}
       >
-        <Gamepad2 className="w-3.5 h-3.5" />
+        <Gamepad2 className="w-4 h-4" />
         Play a Game
       </Button>
 
       <Button
         variant="outline"
-        className="w-full rounded-full gap-2 h-10 border-border/60 hover:bg-muted text-xs shadow-sm hover:shadow-md transition-all flex-shrink-0"
+        className="w-full rounded-full gap-2.5 h-11 border-border/60 hover:bg-muted text-sm shadow-sm hover:shadow-md transition-all flex-shrink-0"
         onClick={() => setLocation("/media")}
       >
-        <Paperclip className="w-3.5 h-3.5" />
+        <Paperclip className="w-4 h-4" />
         Shared Media
       </Button>
     </div>
@@ -458,6 +458,7 @@ export default function Chat() {
             type: currentReply.type,
             gameName: currentReply.gameData?.gameName,
             emoji: currentReply.gameData?.emoji,
+            isAI: currentReply.isAI,
           }
         : null,
       starred: false,
@@ -485,6 +486,7 @@ export default function Chat() {
               type: currentReply.type,
               gameName: currentReply.gameData?.gameName,
               emoji: currentReply.gameData?.emoji,
+              isAI: currentReply.isAI,
             }
           : null,
         linkPreview,
@@ -525,7 +527,12 @@ export default function Chat() {
             type: "text",
             isAI: true,
             replyTo: currentReply
-              ? { id: currentReply.id, text: currentReply.text ?? "[media]", senderId: currentReply.senderId }
+              ? { 
+                  id: currentReply.id, 
+                  text: currentReply.text ?? "[media]", 
+                  senderId: currentReply.senderId,
+                  isAI: currentReply.isAI,
+                }
               : null,
           });
         } finally {
@@ -1196,7 +1203,7 @@ export default function Chat() {
               <Reply className="w-4 h-4 text-primary flex-shrink-0" />
               <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
                 <p className="text-xs font-medium text-primary">
-                  {replyingTo.senderId === user?.uid ? "You" : partnerName}
+                  {replyingTo.isAI ? "Panda" : replyingTo.senderId === user?.uid ? "You" : partnerName}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
                   {replyingTo.text ?? "[media]"}

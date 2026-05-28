@@ -261,7 +261,7 @@ export function MessageBubble({
           >
             <div className="flex flex-col gap-0.5">
               <span className="font-bold text-[10px] text-primary uppercase tracking-tight">
-                {message.replyTo.senderId === myUid ? "You" : "Partner"}
+                {message.replyTo.isAI ? "Panda" : message.replyTo.senderId === myUid ? "You" : "Partner"}
               </span>
               <span className="truncate">
                 {message.replyTo.type === "game" 

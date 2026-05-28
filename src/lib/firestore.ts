@@ -57,6 +57,7 @@ export interface Message {
     type?: string;
     gameName?: string;
     emoji?: string;
+    isAI?: boolean;
   } | null;
   starred: boolean;
   isAI?: boolean;
@@ -169,6 +170,7 @@ export async function sendMessage(
       type?: string;
       gameName?: string;
       emoji?: string;
+      isAI?: boolean;
     } | null;
     linkPreview?: {
       url: string;
