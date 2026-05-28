@@ -64,7 +64,7 @@ export default function Starred() {
               <MessageBubble
                 key={msg.id}
                 message={msg}
-                isMine={msg.senderId === user?.uid}
+                isMine={msg.senderId === user?.uid && !msg.isAI}
                 myUid={user?.uid ?? ""}
               />
             ))}

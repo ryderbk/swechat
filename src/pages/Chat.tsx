@@ -1089,11 +1089,21 @@ export default function Chat() {
               </div>
             )}
 
-            {[...messages, ...pendingMessages].map((msg, idx, allArray) => {
+            {(() => {
+              const cleanPending = pendingMessages.filter(pending => {
+                return !messages.some(m => 
+                  m.senderId === pending.senderId && 
+                  m.text === pending.text &&
+                  m.type === pending.type &&
+                  Math.abs((m.createdAt?.toDate?.() ?? new Date()).getTime() - pending.createdAt.toDate().getTime()) < 15000
+                );
+              });
+              return [...messages, ...cleanPending];
+            })().map((msg, idx, allArray) => {
               const prev = allArray[idx - 1];
               const next = allArray[idx + 1];
               
-              const isMine = msg.senderId === user?.uid;
+              const isMine = msg.senderId === user?.uid && !msg.isAI;
               const isSameAsPrev = prev && prev.senderId === msg.senderId;
               const isSameAsNext = next && next.senderId === msg.senderId;
               
