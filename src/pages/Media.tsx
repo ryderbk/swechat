@@ -315,7 +315,7 @@ export default function Media() {
               <img src={lightbox.url} alt="" className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl animate-scale-in" />
             ) : (
               <div className="glass-card bg-zinc-900/90 text-white p-8 rounded-3xl flex flex-col items-center gap-6 border border-white/10 shadow-2xl animate-scale-in">
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center animate-heartbeat">
+                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
                   <Music className="w-8 h-8 text-primary animate-pulse-glow" />
                 </div>
                 <audio src={lightbox.url} controls autoPlay className="outline-none" />

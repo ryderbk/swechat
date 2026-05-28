@@ -45,7 +45,7 @@ export default function Login() {
       <div className="w-full max-w-sm mx-4 z-10 animate-fade-in-up">
         {/* Animated Heart Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-romantic-lg mb-4 animate-heartbeat">
+          <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-romantic-lg mb-4">
             <Heart className="w-10 h-10 text-primary-foreground fill-current animate-pulse-glow" />
           </div>
           <h1 className="text-4xl font-serif font-bold text-foreground tracking-tight drop-shadow-sm">SweeTalk</h1>

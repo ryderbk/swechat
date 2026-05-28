@@ -36,7 +36,7 @@ export default function SetupPin() {
         <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 rounded-full bg-accent/15 blur-3xl pointer-events-none animate-float-delayed" />
 
         <div className="text-center z-10 animate-fade-in-up">
-          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-romantic-lg mb-4 mx-auto animate-heartbeat">
+          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-romantic-lg mb-4 mx-auto">
             <ShieldCheck className="w-8 h-8 text-primary-foreground fill-current animate-pulse-glow" />
           </div>
           <h2 className="text-3xl font-serif font-bold text-foreground mb-2">PIN Set Successfully!</h2>

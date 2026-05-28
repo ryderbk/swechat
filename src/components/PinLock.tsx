@@ -119,7 +119,7 @@ export function PinLock({ onUnlock, mode = "verify", onSetupComplete }: Props) {
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 rounded-full bg-accent/15 blur-3xl pointer-events-none animate-float-delayed" />
 
       <div className="flex flex-col items-center gap-3 z-10 animate-fade-in-up">
-        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-romantic-lg mb-2 animate-heartbeat">
+        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-romantic-lg mb-2">
           <Heart className="w-8 h-8 text-primary-foreground fill-current animate-pulse-glow" />
         </div>
         

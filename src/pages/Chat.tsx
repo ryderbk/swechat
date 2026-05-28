@@ -157,7 +157,7 @@ function Sidebar({
             Together Forever
           </span>
         </div>
-        <p className="text-3xl font-serif font-bold text-foreground drop-shadow-sm animate-heartbeat">{daysTogether}</p>
+        <p className="text-3xl font-serif font-bold text-foreground drop-shadow-sm">{daysTogether}</p>
         <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">days and counting</p>
         <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-medium">Since July 7, 2025</p>
       </div>
@@ -180,7 +180,7 @@ function Sidebar({
             className="w-full text-[11px] h-8 border border-primary/20 hover:bg-primary/10 transition-all font-semibold rounded-full"
             onClick={onNewPrompt}
           >
-            <Heart className="w-3 h-3 mr-1.5 fill-primary/20 animate-heartbeat" />
+            <Heart className="w-3 h-3 mr-1.5 fill-primary/20" />
             New Spark
           </Button>
         </div>
@@ -203,8 +203,6 @@ function Sidebar({
           />
         </div>
       </div>
-
-      <div className="flex-1" />
 
       <Button
         variant="outline"
@@ -856,8 +854,8 @@ export default function Chat() {
 
       {/* Header */}
       <header className="flex-shrink-0 bg-card/60 backdrop-blur-xl border-b border-primary/10 px-5 py-3.5 flex items-center gap-4 shadow-sm z-10 animate-fade-in">
-        <Avatar className="w-10 h-10 ring-2 ring-primary/20 shadow-sm animate-heartbeat">
-          <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold font-serif">
+        <Avatar className="w-10 h-10 ring-2 ring-primary/20 shadow-sm">
+          <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold font-sans flex items-center justify-center leading-none select-none">
             {partnerInitial}
           </AvatarFallback>
         </Avatar>

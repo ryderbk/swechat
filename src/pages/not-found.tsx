@@ -19,7 +19,7 @@ export default function NotFound() {
 
       <div className="w-full max-w-md mx-4 z-10 animate-fade-in-up">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 animate-heartbeat">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
             <Heart className="w-8 h-8 text-primary fill-current animate-pulse-glow" />
           </div>
           <h1 className="text-4xl font-serif font-bold text-foreground tracking-tight text-center drop-shadow-sm">
