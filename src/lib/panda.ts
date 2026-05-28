@@ -1,0 +1,229 @@
+/// <reference types="vite/client" />
+import { Message, AIMemory } from "./firestore";
+import { getRandomQuestion } from "./questions";
+
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const MODEL = "llama-3.3-70b-versatile";
+
+const PANDA_SYSTEM = `You are Panda, a warm, playful, emotionally intelligent AI inside SweeTalk — a private chat app for Bharath Kumar and Saiswetha. 
+* User is either Bharath Kumar or Saiswetha.
+* Their relationship is exclusive and special.
+
+RULES:
+- ALWAYS use the names "Bharath Kumar" and "Saiswetha".
+- NEVER use nicknames or variations in your response.
+- Make their games personal, fun, and meaningful. 
+- Speak with warmth and light humor texting style. 
+- Keep responses concise and sweet. 
+- Use emojis naturally to express emotion.
+- Never be generic — reference what you know about their relationship.`;
+
+export interface PandaGameMemory {
+  gameHistory: { game: string; result: string; date: string }[];
+  knownFacts: string[];
+  streaks: Record<string, number>;
+  totalPoints: { player1: number; player2: number };
+  matchRates: Record<string, number>;
+  lastUpdated?: string;
+  activeGameId?: string | null;
+  activeGameDocId?: string | null;
+}
+
+export const EMPTY_MEMORY: PandaGameMemory = {
+  gameHistory: [],
+  knownFacts: [],
+  streaks: {},
+  totalPoints: { player1: 0, player2: 0 },
+  matchRates: {},
+  activeGameId: null,
+  activeGameDocId: null,
+};
+
+async function callGroq(
+  messages: { role: string; content: string }[],
+  json = false
+): Promise<string> {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      temperature: 0.88,
+      max_tokens: 400,
+      ...(json ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+  if (!res.ok) throw new Error(`Groq error ${res.status}`);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+export async function generateQuestion(
+  gameType: string,
+  _memory: PandaGameMemory,
+  _category?: string
+): Promise<{ question: string; hint?: string; options?: string[] }> {
+  const typeMap: Record<string, string> = {
+    "This or That": "thisorthat",
+    "Memory Quiz": "memoryquiz",
+    "Answer & Reveal": "answerreveal",
+    "Complete the Sentence": "completesentence",
+    "One Question a Day": "dailyquestion",
+    "Truth or Dare": "truthordare",
+    "Mood Sync": "moodsync",
+    "Random Question": "randomquestion",
+    "Guess My Answer": "guessmyanswer",
+  };
+
+  const key = typeMap[gameType] || gameType.toLowerCase().replace(/\s/g, "");
+  const res = getRandomQuestion(key);
+  
+  return {
+    question: res.question,
+    options: res.options,
+    hint: gameType === "Memory Quiz" ? "Think carefully! 💕" : undefined,
+  };
+}
+
+export async function evaluateAnswer(
+  question: string,
+  correctAnswer: string,
+  guessedAnswer: string
+): Promise<{ correct: boolean; score: number; pandaComment: string }> {
+  const prompt = `Question: "${question}"
+Real answer: "${correctAnswer}"
+Guess: "${guessedAnswer}"
+Evaluate closeness (fuzzy match, be generous with synonyms).
+Return JSON: {"correct":bool,"score":0-100,"pandaComment":"warm comment ≤15 words"}
+Scores: 100=exact/near-exact, 75=very close, 50=somewhat, 0=off.`;
+
+  try {
+    const res = await callGroq(
+      [{ role: "system", content: PANDA_SYSTEM }, { role: "user", content: prompt }],
+      true
+    );
+    return JSON.parse(res);
+  } catch {
+    const match = correctAnswer.toLowerCase().trim() === guessedAnswer.toLowerCase().trim();
+    return {
+      correct: match,
+      score: match ? 100 : 30,
+      pandaComment: match ? "Perfect match! 🎉" : "So close! Keep trying 💕",
+    };
+  }
+}
+
+export async function generateReveal(
+  question: string,
+  answer1: string,
+  answer2: string,
+  name1 = "Bharath",
+  name2 = "Saiswetha"
+): Promise<string> {
+  const prompt = `Question: "${question}"
+${name1} said: "${answer1}"
+${name2} said: "${answer2}"
+Write one warm, funny, or sweet sentence comparing their answers. Max 20 words. No quotes around your response.`;
+
+  try {
+    return await callGroq([
+      { role: "system", content: PANDA_SYSTEM },
+      { role: "user", content: prompt },
+    ]);
+  } catch {
+    return "You two are perfectly in sync, even when you're not! 💕";
+  }
+}
+
+export async function askPanda(
+  message: string,
+  memory: PandaGameMemory,
+  context?: string
+): Promise<string> {
+  try {
+    return await callGroq([
+      { role: "system", content: PANDA_SYSTEM + (context ? `\n\nContext: ${context}` : "") },
+      { role: "user", content: message },
+    ]);
+  } catch {
+    return "You two are absolutely adorable together! 🐼💕";
+  }
+}
+
+export async function generateMoodSuggestion(mood1: string, mood2: string): Promise<string> {
+  const prompt = `Bharath Kumar is feeling ${mood1} and Saiswetha is feeling ${mood2}. Suggest one sweet activity or game for them in one sentence. Max 20 words.`;
+  try {
+    return await callGroq([
+      { role: "system", content: PANDA_SYSTEM },
+      { role: "user", content: prompt },
+    ]);
+  } catch {
+    return "Try playing a game together to connect! 💕";
+  }
+}
+export async function generatePandaReply(
+  userId: string,
+  userDisplayName: string,
+  partnerDisplayName: string,
+  recentMessages: Message[],
+  userMessage: string,
+  replyTo?: { id: string; text: string; senderId: string } | null
+): Promise<string> {
+  const history = recentMessages
+    .filter((m) => m.text && !m.deleted)
+    .slice(-10)
+    .map((m) => {
+      const sender = m.senderId === userId ? userDisplayName : partnerDisplayName;
+      return `${sender}: ${m.text}`;
+    })
+    .join("\n");
+
+  const prompt = `Recent Conversation:\n${history}\n\n${userDisplayName} just sent: "${userMessage}"${
+    replyTo ? `\n(Replying to: "${replyTo.text}")` : ""
+  }\n\nGenerate a warm, Panda-style reply. Keep it concise.`;
+
+  try {
+    return await callGroq([
+      { role: "system", content: PANDA_SYSTEM },
+      { role: "user", content: prompt },
+    ]);
+  } catch {
+    return "I'm here for you both! 🐼💕";
+  }
+}
+
+export async function maybeUpdatePandaMemory(
+  messages: Message[],
+  currentMemory: AIMemory | null
+): Promise<void> {
+  // Only update if we have a significant number of new messages
+  if (messages.length < 5) return;
+
+  const history = messages
+    .filter((m) => m.text && !m.deleted)
+    .map((m) => `${m.senderId}: ${m.text}`)
+    .join("\n");
+
+  const prompt = `Current Memory: ${currentMemory?.relationshipSummary || "None"}
+Recent interaction:
+${history}
+
+Summarize their current dynamic, update user profiles, and note any new important moments.
+Return JSON: {"relationshipSummary":"...","userAProfile":"...","userBProfile":"...","importantMoments":["..."]}`;
+
+  try {
+    const res = await callGroq(
+      [{ role: "system", content: "You are a relationship memory optimizer." }, { role: "user", content: prompt }],
+      true
+    );
+    const updated = JSON.parse(res);
+    const { updateAIMemory } = await import("./firestore");
+    await updateAIMemory(updated);
+  } catch (err) {
+    console.error("Failed to update Panda memory:", err);
+  }
+}
