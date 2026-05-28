@@ -33,7 +33,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden py-12">
+    <div className="h-full w-full flex items-center justify-center bg-background relative overflow-hidden py-4">
       {/* Decorative Canvas elements from projectswe */}
       <FloatingHearts />
       <FloatingSparkles />

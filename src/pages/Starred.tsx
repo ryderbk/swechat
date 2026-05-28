@@ -22,7 +22,7 @@ export default function Starred() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+    <div className="h-full max-h-full bg-background flex flex-col relative overflow-hidden">
       {/* Sparkles background for the starry effect */}
       <FloatingSparkles />
 

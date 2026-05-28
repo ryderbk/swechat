@@ -26,7 +26,7 @@ export default function SetupPin() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 p-8 relative overflow-hidden">
+      <div className="h-full w-full bg-background flex flex-col items-center justify-center gap-6 p-4 relative overflow-hidden">
         {/* Decorative canvas animations from projectswe */}
         <FloatingHearts />
         <FloatingSparkles />

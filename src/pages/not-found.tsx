@@ -8,7 +8,7 @@ export default function NotFound() {
   const [, setLocation] = useLocation();
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden py-12">
+    <div className="h-full w-full flex items-center justify-center bg-background relative overflow-hidden py-4">
       {/* Decorative Canvas elements */}
       <FloatingHearts />
       <FloatingSparkles />
