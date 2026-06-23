@@ -148,20 +148,6 @@ function Sidebar({
 
   return (
     <div className="flex flex-col gap-4 p-5 h-full overflow-hidden select-none">
-      {/* Together Forever Counter */}
-      <div className="glass-card rounded-2xl p-4 py-4 border border-primary/15 shadow-romantic text-center relative overflow-hidden animate-fade-in-up flex-shrink-0">
-        <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl pointer-events-none" />
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <CalendarDays className="w-4 h-4 text-primary animate-pulse-glow" />
-          <span className="text-xs font-serif font-bold text-primary uppercase tracking-wider">
-            Together Forever
-          </span>
-        </div>
-        <p className="text-4xl font-serif font-bold text-foreground drop-shadow-sm">{daysTogether}</p>
-        <p className="text-[13px] text-muted-foreground font-semibold mt-1">days and counting</p>
-        <p className="text-[11px] text-muted-foreground/60 mt-0.5 font-medium">Since July 7, 2025</p>
-      </div>
-
       {/* Shared Corner (Prompt + Note) */}
       <div className="glass-card rounded-2xl p-4 py-4 border border-primary/15 shadow-romantic space-y-4 animate-fade-in-up flex-shrink-0">
         <div>
